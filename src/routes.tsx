@@ -1,9 +1,13 @@
 import { createBrowserRouter } from "react-router-dom";
 import Login from "./components/admin/pages/Login";
 import Dashboard from "./components/admin/pages/Dashboard";
-import CreateItem from "./components/admin/pages/CreateItem";
 import ViewItens from "./components/admin/pages/ViewItens";
 import CategoriesManager from "./components/admin/pages/CategoriesManager";
+import AdminSettings from "./components/admin/pages/AdminSettings";
+import LandingPage from "./components/LandingPage";
+import CreateProduct from "./components/admin/pages/CreateProduct";
+import AppointmentsManager from "./components/admin/pages/AppointmentsManager";
+import MyAppointments from "./components/client/pages/MyAppointments";
 
 const routes = createBrowserRouter([
     {
@@ -16,7 +20,7 @@ const routes = createBrowserRouter([
     },
     {
         path: "/create-product",
-        element: < CreateItem />
+        element: < CreateProduct />
     },
     {
         path: "/view-itens",
@@ -25,6 +29,23 @@ const routes = createBrowserRouter([
     {
         path: "/categories",
         element: <CategoriesManager />
+    },
+    {
+        path: "/admin/settings",
+        element: < AdminSettings />
+    },
+    {
+        path: "/appointments",
+        element: <AppointmentsManager />
+    },
+    {
+        path: "/",
+        element: < LandingPage />
+    },
+    {
+        path: "/auth/google",
+        element: < MyAppointments/>
     }
 ]);
+
 export default routes;

@@ -1,347 +1,293 @@
-// CategoriesManager.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import { PlusCircle, Edit2, Trash2, Tag, Search, Calendar, Filter } from "lucide-react";
-import { UrlCategories } from "../../utils/scripts/url/index"; // ajuste o path conforme seu projeto
+import { PlusCircle, Edit2, Trash2, Tag, Search, Filter, MoreVertical } from "lucide-react";
+// Ajuste o path conforme seu projeto
+import { UrlCategories } from "../../utils/scripts/url/index";
 import Navbar from "../../utils/Navbar";
 
+// --- TIPOS ---
+interface Category {
+    id: number;
+    name: string;
+    createdAt: string;
+    _count?: {
+        posts: number;
+    };
+    // A API pode retornar a lista completa em vez da contagem
+    posts?: any[];
+}
+
+type FilterType = "all" | "withProducts" | "withoutProducts";
+
+// --- COMPONENTE PRINCIPAL ---
 export default function CategoriesManager() {
-    const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    // filtros / pesquisa (igual ao ViewItens)
+    // --- ESTADOS DE FILTRO ---
     const [q, setQ] = useState("");
-    const [dateFrom, setDateFrom] = useState("");
-    const [dateTo, setDateTo] = useState("");
-    const [showFilter, setShowFilter] = useState("all"); // all | withProducts | withoutProducts
+    const [showFilter, setShowFilter] = useState<FilterType>("all");
 
-    // fetch inicial
-    async function fetchCategories() {
+    // --- FUNÇÕES DE FETCH ---
+    const fetchCategories = async () => {
         setLoading(true);
         setError(null);
         try {
             const res = await fetch(UrlCategories.allCategories);
-            if (!res.ok) throw new Error(`Erro ${res.status}`);
+            if (!res.ok) throw new Error(`Erro ao carregar categorias: ${res.statusText}`);
             const data = await res.json();
-            // normaliza createdAt (aceita createdAt / created_at / date)
-            const normalized = Array.isArray(data)
-                ? data.map((c) => ({
-                    ...c,
-                    createdAt: parseDate(c.createdAt ?? c.created_at ?? c.date ?? c.created),
-                    productsCount: c.count ?? c.productsCount ?? c._count?.products ?? c.productsCount ?? null,
-                }))
-                : [];
-            setCategories(normalized);
-        } catch (err) {
+            setCategories(Array.isArray(data) ? data : []);
+        } catch (err: any) {
             console.error("Erro ao buscar categorias:", err);
-            setError("Não foi possível carregar categorias.");
-            setCategories([]);
+            setError("Não foi possível carregar as categorias.");
         } finally {
             setLoading(false);
         }
-    }
+    };
 
     useEffect(() => {
         fetchCategories();
     }, []);
 
-    // util parse date
-    function parseDate(value) {
-        if (!value) return null;
-        const d = new Date(value);
-        return isNaN(d.getTime()) ? null : d;
-    }
-
-    // filtros aplicados no frontend (memoizado)
-    const filtered = useMemo(() => {
+    // --- LÓGICA DE FILTRO ---
+    const filteredCategories = useMemo(() => {
         const qLower = q.trim().toLowerCase();
-
         return categories.filter((c) => {
-            // busca por nome
-            const name = String(c.name ?? c.title ?? "").toLowerCase();
+            const name = String(c.name ?? "").toLowerCase();
             if (qLower && !name.includes(qLower)) return false;
 
-            // filtro por data
-            const d = c.createdAt;
-            if (dateFrom) {
-                const from = new Date(dateFrom);
-                if (!d || d < from) return false;
-            }
-            if (dateTo) {
-                const to = new Date(dateTo);
-                to.setHours(23, 59, 59, 999);
-                if (!d || d > to) return false;
-            }
-
-            // filtro por produtos vinculados
-            if (showFilter === "withProducts") {
-                // se productsCount existir e >0, passa; se não existir, tenta interpretar lista vazia (não confiável)
-                if (!(Number(c.productsCount) > 0)) return false;
-            } else if (showFilter === "withoutProducts") {
-                if (Number(c.productsCount) > 0) return false;
-            }
+            const productsCount = c._count?.posts ?? c.posts?.length ?? 0;
+            if (showFilter === "withProducts" && productsCount === 0) return false;
+            if (showFilter === "withoutProducts" && productsCount > 0) return false;
 
             return true;
         });
-    }, [categories, q, dateFrom, dateTo, showFilter]);
+    }, [categories, q, showFilter]);
 
-    // criar categoria (Swal)
-    async function handleCreateCategory() {
+    // --- FUNÇÕES DE CRUD ---
+    const handleCreate = async () => {
         const { value: name } = await Swal.fire({
-            title: "Criar nova categoria",
+            title: "Criar Nova Categoria",
             input: "text",
-            inputLabel: "Nome da categoria",
-            inputPlaceholder: "Ex: Climatizadores",
+            inputPlaceholder: "Ex: Eletrônicos",
             showCancelButton: true,
             confirmButtonText: "Criar",
             cancelButtonText: "Cancelar",
-            inputValidator: (v) => (!v || !v.trim() ? "Digite um nome válido" : null),
-            customClass: { popup: "rounded-md" },
+            inputValidator: (v) => (!v || !v.trim() ? "O nome é obrigatório." : null),
         });
 
         if (!name) return;
         try {
-            Swal.fire({ title: "Criando...", didOpen: () => Swal.showLoading() });
             const res = await fetch(UrlCategories.createCategory, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: name.trim() }),
             });
             if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `Erro ${res.status}`);
+                const errorData = await res.json();
+                throw new Error(errorData.message || `Erro ${res.status}`);
             }
-            await res.json();
-            Swal.fire({ icon: "success", title: "Criada", text: `Categoria "${name}" criada.` });
-            await fetchCategories();
-        } catch (err) {
-            console.error(err);
-            Swal.fire({ icon: "error", title: "Erro", text: "Não foi possível criar a categoria." });
+            Swal.fire({ icon: "success", title: "Criada!", text: "A nova categoria foi adicionada." });
+            fetchCategories();
+        } catch (err: any) {
+            Swal.fire({ icon: "error", title: "Erro", text: err.message });
         }
-    }
+    };
 
-    // editar categoria
-    async function handleEditCategory(cat) {
-        const currentName = cat.name ?? cat.title ?? "";
+    const handleEdit = async (cat: Category) => {
         const { value: newName } = await Swal.fire({
-            title: "Editar categoria",
+            title: "Editar Categoria",
             input: "text",
-            inputLabel: "Nome da categoria",
-            inputValue: currentName,
+            inputValue: cat.name,
             showCancelButton: true,
             confirmButtonText: "Salvar",
             cancelButtonText: "Cancelar",
-            inputValidator: (v) => (!v || !v.trim() ? "Digite um nome válido" : null),
-            customClass: { popup: "rounded-md" },
+            inputValidator: (v) => (!v || !v.trim() ? "O nome é obrigatório." : null),
         });
 
-        if (!newName || newName.trim() === currentName) return;
+        if (!newName || newName.trim() === cat.name) return;
 
         try {
-            Swal.fire({ title: "Salvando...", didOpen: () => Swal.showLoading() });
-            const id = cat.id ?? cat._id ?? cat.value;
-            const res = await fetch((UrlCategories.updateCategory || UrlCategories.updateCategory + "") + id, {
+            const res = await fetch(UrlCategories.updateCategory(cat.id), {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: newName.trim() }),
             });
             if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `Erro ${res.status}`);
+                const errorData = await res.json();
+                throw new Error(errorData.message || `Erro ${res.status}`);
             }
-            await res.json();
-            Swal.fire({ icon: "success", title: "Atualizada", text: `Categoria atualizada para "${newName}".` });
-            await fetchCategories();
-        } catch (err) {
-            console.error(err);
-            Swal.fire({ icon: "error", title: "Erro", text: "Não foi possível atualizar a categoria." });
+            Swal.fire({ icon: "success", title: "Atualizada!", text: "A categoria foi salva com sucesso." });
+            fetchCategories();
+        } catch (err: any) {
+            Swal.fire({ icon: "error", title: "Erro", text: err.message });
         }
-    }
+    };
 
-    // excluir categoria com aviso de exclusão em cascata
-    async function handleDeleteCategory(cat) {
-        const name = cat.name ?? cat.title ?? "esta categoria";
-        const id = cat.id ?? cat._id ?? cat.value;
-
-        const confirmed = await Swal.fire({
-            title: `Excluir "${name}"?`,
-            html: `<p>Ao excluir esta categoria, <strong>todos os produtos vinculados a ela serão excluídos também</strong>. Esta ação <strong>não pode ser desfeita</strong>.</p><p class="mt-2 text-sm text-gray-600">Deseja continuar?</p>`,
+    const handleDelete = async (cat: Category) => {
+        const result = await Swal.fire({
+            title: `Excluir "${cat.name}"?`,
+            html: `Todos os produtos vinculados também serão removidos.<br/><strong>Esta ação é irreversível.</strong>`,
             icon: "warning",
             showCancelButton: true,
-            confirmButtonText: "Excluir e remover produtos",
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Sim, excluir",
             cancelButtonText: "Cancelar",
-            focusCancel: true,
-            customClass: { popup: "rounded-md" },
         });
 
-        if (!confirmed.isConfirmed) return;
+        if (!result.isConfirmed) return;
 
         try {
-            Swal.fire({ title: "Excluindo...", didOpen: () => Swal.showLoading() });
-            const res = await fetch((UrlCategories.deleteCategory || UrlCategories.deleteCategory + "") + id, {
-                method: "DELETE",
-            });
+            const res = await fetch(UrlCategories.deleteCategory(cat.id), { method: "DELETE" });
             if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `Erro ${res.status}`);
+                const errorData = await res.json();
+                throw new Error(errorData.message || `Erro ${res.status}`);
             }
-            await res.json();
-            Swal.fire({ icon: "success", title: "Excluída", text: `Categoria "${name}" excluída.` });
-            await fetchCategories();
-        } catch (err) {
-            console.error(err);
-            Swal.fire({ icon: "error", title: "Erro", text: "Não foi possível excluir a categoria." });
+            Swal.fire({ icon: "success", title: "Excluída!", text: "A categoria e seus produtos foram removidos." });
+            fetchCategories();
+        } catch (err: any) {
+            Swal.fire({ icon: "error", title: "Erro", text: err.message });
         }
-    }
+    };
 
-    // layout responsivo: pesquisa + botões
+    // --- RENDERIZAÇÃO ---
     return (
         <>
-        <Navbar />
-        <div className="min-h-screen p-6 bg-gray-50">
-            <div className="max-w-5xl mx-auto space-y-6">
-                <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <Tag className="text-gray-700" />
+            <Navbar />
+            <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+                <div className="max-w-5xl mx-auto">
+                    <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                         <div>
-                            <h1 className="text-2xl font-semibold text-gray-900">Categorias</h1>
-                            <p className="text-sm text-gray-500">Gerencie suas categorias — criar, editar e excluir</p>
+                            <h1 className="text-2xl font-semibold text-gray-800">Gerenciar Categorias</h1>
+                            <p className="text-sm text-gray-500 mt-1">Crie, edite e organize as categorias dos seus produtos.</p>
+                        </div>
+                        <button onClick={handleCreate} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm transition">
+                            <PlusCircle size={18} /> Nova Categoria
+                        </button>
+                    </header>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="relative">
+                                <Search className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20}/>
+                                <input placeholder="Buscar por nome..." value={q} onChange={(e) => setQ(e.target.value)} className="block w-full pl-10 pr-3 py-2.5 text-sm text-gray-900 bg-transparent rounded-lg border border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-600" />
+                            </div>
+                             <div className="relative">
+                                <Filter className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20}/>
+                                <select value={showFilter} onChange={(e) => setShowFilter(e.target.value as FilterType)} className="block w-full pl-10 pr-3 py-2.5 text-sm text-gray-900 bg-transparent rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600">
+                                    <option value="all">Mostrar todas</option>
+                                    <option value="withProducts">Com produtos</option>
+                                    <option value="withoutProducts">Sem produtos</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleCreateCategory}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                        >
-                            <PlusCircle size={16} /> Nova categoria
+                    {loading ? (
+                        <div className="text-center p-10 text-gray-500">Carregando categorias...</div>
+                    ) : error ? (
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+                            <p className="font-bold">Erro</p><p>{error}</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            {filteredCategories.length === 0 ? (
+                                <div className="text-center p-10 text-gray-500">Nenhuma categoria encontrada.</div>
+                            ) : (
+                                <>
+                                    <table className="w-full text-sm hidden md:table">
+                                        <thead className="bg-gray-50">
+                                            <tr className="text-left text-gray-600">
+                                                <th className="p-4 font-semibold">Categoria</th>
+                                                <th className="p-4 font-semibold">Produtos</th>
+                                                <th className="p-4 font-semibold">Criada em</th>
+                                                <th className="p-4 font-semibold text-right">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {filteredCategories.map((cat) => (
+                                                <CategoryRow key={cat.id} category={cat} onEdit={handleEdit} onDelete={handleDelete} />
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <div className="divide-y divide-gray-200 md:hidden">
+                                        {filteredCategories.map((cat) => (
+                                            <CategoryCard key={cat.id} category={cat} onEdit={handleEdit} onDelete={handleDelete} />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+    );
+}
+
+// --- COMPONENTES DE ITEM ---
+
+interface CategoryItemProps {
+    category: Category;
+    onEdit: (cat: Category) => void;
+    onDelete: (cat: Category) => void;
+}
+
+function CategoryRow({ category, onEdit, onDelete }: CategoryItemProps) {
+    const productsCount = category._count?.posts ?? category.posts?.length ?? 0;
+    const creationDate = category.createdAt ? new Date(category.createdAt).toLocaleDateString('pt-BR') : "—";
+    
+    return (
+        <tr className="hover:bg-gray-50">
+            <td className="p-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Tag size={20} className="text-gray-500" />
+                    </div>
+                    <span className="font-medium text-gray-800">{category.name}</span>
+                </div>
+            </td>
+            <td className="p-4 text-gray-600">{productsCount}</td>
+            <td className="p-4 text-gray-600">{creationDate}</td>
+            <td className="p-4 text-right">
+                <div className="inline-flex items-center gap-2">
+                    <button onClick={() => onEdit(category)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-full"><Edit2 size={16} /></button>
+                    <button onClick={() => onDelete(category)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-gray-100 rounded-full"><Trash2 size={16} /></button>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+function CategoryCard({ category, onEdit, onDelete }: CategoryItemProps) {
+    const productsCount = category._count?.posts ?? category.posts?.length ?? 0;
+    return (
+        <div className="p-4">
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Tag size={20} className="text-gray-500" />
+                    </div>
+                    <span className="font-medium text-gray-800">{category.name}</span>
+                </div>
+                <details className="relative">
+                    <summary className="list-none cursor-pointer p-2 rounded-full hover:bg-gray-100"><MoreVertical size={20} /></summary>
+                    <div className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-lg z-10 border">
+                        <button onClick={() => onEdit(category)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100">
+                            <Edit2 size={14} /> Editar
+                        </button>
+                        <button onClick={() => onDelete(category)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                            <Trash2 size={14} /> Excluir
                         </button>
                     </div>
-                </header>
-
-                {/* filtros / pesquisa (responsivo) */}
-                <div className="bg-white rounded-lg p-4 shadow-sm">
-                    <div className="flex flex-col md:flex-row md:items-center md:gap-3 gap-3">
-                        {/* busca por nome */}
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 w-full">
-                                <Search size={16} className="text-gray-500" />
-                                <input
-                                    placeholder="Buscar por nome..."
-                                    value={q}
-                                    onChange={(e) => setQ(e.target.value)}
-                                    className="outline-none text-sm w-full"
-                                />
-                            </div>
-                        </div>
-
-                        {/* intervalo de datas */}
-                        <div className="flex items-center gap-2">
-                            <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-2">
-                                <Calendar size={16} className="text-gray-500" />
-                                <input
-                                    type="date"
-                                    value={dateFrom}
-                                    onChange={(e) => setDateFrom(e.target.value)}
-                                    className="text-sm outline-none"
-                                    aria-label="Data desde"
-                                />
-                                <span className="px-1 text-gray-400">—</span>
-                                <input
-                                    type="date"
-                                    value={dateTo}
-                                    onChange={(e) => setDateTo(e.target.value)}
-                                    className="text-sm outline-none"
-                                    aria-label="Data até"
-                                />
-                            </div>
-                        </div>
-
-                        {/* filtro mostrar */}
-                        <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
-                            <Filter size={16} />
-                            <select
-                                value={showFilter}
-                                onChange={(e) => setShowFilter(e.target.value)}
-                                className="text-sm outline-none bg-transparent"
-                            >
-                                <option value="all">Todos</option>
-                                <option value="withProducts">Com produtos</option>
-                                <option value="withoutProducts">Sem produtos</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* conteúdo */}
-                {loading ? (
-                    <div className="rounded-xl bg-white p-6 shadow-sm text-center">Carregando categorias...</div>
-                ) : error ? (
-                    <div className="rounded-xl bg-red-50 p-4 text-red-700">{error}</div>
-                ) : (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm">
-                        {filtered.length === 0 ? (
-                            <div className="text-gray-500 p-6 text-center">Nenhuma categoria encontrada.</div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm table-auto">
-                                    <thead>
-                                        <tr className="text-left text-gray-600 border-b">
-                                            <th className="p-3">Categoria</th>
-                                            <th className="p-3">Produtos vinculados</th>
-                                            <th className="p-3">Criada em</th>
-                                            <th className="p-3 text-right">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filtered.map((c) => {
-                                            const count = c.productsCount ?? "—";
-                                            return (
-                                                <tr key={c.id ?? c._id ?? c.value} className="border-b last:border-none">
-                                                    <td className="p-3">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-9 h-9 rounded-md bg-gray-100 flex items-center justify-center">
-                                                                <Tag size={16} className="text-gray-500" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-medium text-gray-900">{c.name ?? c.title ?? "Sem nome"}</div>
-                                                                <div className="text-xs text-gray-500">{String(c.id ?? c._id ?? "")}</div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-
-                                                    <td className="p-3">{count}</td>
-                                                    <td className="p-3">{c.createdAt ? c.createdAt.toLocaleDateString() : "—"}</td>
-
-                                                    <td className="p-3 text-right">
-                                                        <div className="inline-flex gap-2 justify-end w-full">
-                                                            <button
-                                                                onClick={() => handleEditCategory(c)}
-                                                                className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm"
-                                                            >
-                                                                <Edit2 size={14} /> Editar
-                                                            </button>
-
-                                                            <button
-                                                                onClick={() => handleDeleteCategory(c)}
-                                                                className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 text-sm"
-                                                            >
-                                                                <Trash2 size={14} /> Excluir
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )}
+                </details>
+            </div>
+            <div className="mt-2 flex justify-between items-center text-sm text-gray-500">
+                <span>Produtos: <strong>{productsCount}</strong></span>
+                <span>Criada em: <strong>{new Date(category.createdAt).toLocaleDateString('pt-BR')}</strong></span>
             </div>
         </div>
-        </>
     );
 }

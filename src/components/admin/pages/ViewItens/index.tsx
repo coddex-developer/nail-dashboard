@@ -1,510 +1,543 @@
-// ViewItens.jsx
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, FormEvent } from "react";
 import Swal from "sweetalert2";
 import {
     Edit2,
     Trash2,
     Search,
-    Calendar,
     Filter,
     ImageIcon,
     Check,
-    X
+    X,
+    MoreVertical,
+    CircleDollarSign,
+    LayoutGrid,
+    Eye,
+    Clock
 } from "lucide-react";
-import { UrlProducts, UrlCategories } from "../../utils/scripts/url/index"; // ajuste o path se precisar
+// Ajuste os paths de importação conforme a estrutura do seu projeto
+import { UrlProducts, UrlCategories } from "../../utils/scripts/url/index";
 import Navbar from "../../utils/Navbar";
 
+// --- TIPOS E CONFIGURAÇÕES ---
+const API_BASE_URL = "http://localhost:3000"; // Ex: http://localhost:3000 ou https://suaapi.com
+
+interface Category {
+    id: number;
+    name: string;
+}
+
+interface TimeSlot {
+    start: string;
+    end: string;
+}
+
+interface Availability {
+    monday: TimeSlot[];
+    tuesday: TimeSlot[];
+    wednesday: TimeSlot[];
+    thursday: TimeSlot[];
+    friday: TimeSlot[];
+    saturday: TimeSlot[];
+    sunday: TimeSlot[];
+}
+
+interface Product {
+    id: number;
+    title: string;
+    content?: string;
+    price: number;
+    published: boolean | string;
+    image: string;
+    createdAt: string;
+    categoryId: number;
+    availability: Availability | null;
+    newImageFile?: File;
+}
+
+const initialAvailability: Availability = {
+    monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [],
+};
+
 export default function ViewItens() {
-    const [items, setItems] = useState([]); // produtos
-    const [categories, setCategories] = useState([]); // categorias
-    const [loading, setLoading] = useState(false);
-    const [catLoading, setCatLoading] = useState(false);
-    const [error, setError] = useState(null);
+    // --- ESTADOS ---
+    const [items, setItems] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    // filtros
+    // --- ESTADOS DE FILTRO ---
     const [q, setQ] = useState("");
-    const [dateFrom, setDateFrom] = useState("");
-    const [dateTo, setDateTo] = useState("");
-    const [publishedFilter, setPublishedFilter] = useState("all"); // all | published | unpublished
+    const [publishedFilter, setPublishedFilter] = useState("all");
 
-    // modal edição
+    // --- ESTADOS DO MODAL ---
     const [editOpen, setEditOpen] = useState(false);
-    const [editItem, setEditItem] = useState(null);
+    const [editItem, setEditItem] = useState<Product | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
-    // fetch inicial
-    async function fetchItems() {
+    // --- FUNÇÕES DE FETCH ---
+    const fetchItems = async () => {
         setLoading(true);
+        setError(null);
         try {
             const res = await fetch(UrlProducts.allProducts);
-            if (!res.ok) throw new Error(`Erro ${res.status}`);
+            if (!res.ok) throw new Error(`Erro ao carregar produtos: ${res.statusText}`);
             const data = await res.json();
             setItems(Array.isArray(data) ? data : []);
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            setError("Não foi possível carregar produtos.");
-            Swal.fire({ icon: "error", title: "Erro", text: "Não foi possível carregar produtos." });
+            setError("Não foi possível carregar os produtos.");
         } finally {
             setLoading(false);
         }
-    }
+    };
 
-    async function fetchCategories() {
-        setCatLoading(true);
+    const fetchCategories = async () => {
         try {
             const res = await fetch(UrlCategories.allCategories);
-            if (!res.ok) throw new Error(`Erro ${res.status}`);
+            if (!res.ok) throw new Error(`Erro ao carregar categorias: ${res.statusText}`);
             const data = await res.json();
             setCategories(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
-            Swal.fire({ icon: "error", title: "Erro", text: "Não foi possível carregar categorias." });
-        } finally {
-            setCatLoading(false);
         }
-    }
+    };
 
     useEffect(() => {
-        fetchItems();
-        fetchCategories();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        Promise.all([fetchItems(), fetchCategories()]);
     }, []);
 
-    // helper: extrair data de um item (várias convenções possíveis)
-    function getItemDate(item) {
-        if (!item) return null;
-        const possible = item.createdAt ?? item.created_at ?? item.date ?? item.created ?? null;
-        if (!possible) return null;
-        const d = new Date(possible);
-        if (isNaN(d.getTime())) return null;
-        return d;
-    }
-
-    // filtro e pesquisa (memoizado)
-    const filtered = useMemo(() => {
+    // --- LÓGICA DE FILTRO E AGRUPAMENTO ---
+    const filteredItems = useMemo(() => {
         const qLower = q.trim().toLowerCase();
-
-        return items.filter((it) => {
-            // search by name/title
-            const name = (it.name ?? it.title ?? "").toString().toLowerCase();
-            if (qLower && !name.includes(qLower)) return false;
-
-            // date filter
-            const d = getItemDate(it);
-            if (dateFrom) {
-                const from = new Date(dateFrom);
-                if (!d || d < from) return false;
-            }
-            if (dateTo) {
-                // include the to-date entire day
-                const to = new Date(dateTo);
-                to.setHours(23, 59, 59, 999);
-                if (!d || d > to) return false;
-            }
-
-            // published filter
-            if (publishedFilter === "published" && !(it.published === true || it.published === "true" || it.published === 1)) return false;
-            if (publishedFilter === "unpublished" && (it.published === true || it.published === "true" || it.published === 1)) return false;
-
+        return items.filter((item) => {
+            const title = (item.title ?? "").toLowerCase();
+            if (qLower && !title.includes(qLower)) return false;
+            if (publishedFilter !== "all" && String(item.published) !== publishedFilter) return false;
             return true;
         });
-    }, [items, q, dateFrom, dateTo, publishedFilter]);
+    }, [items, q, publishedFilter]);
 
-    // agrupa por categoriaId (categoria vazia => 'uncategorized')
-    const grouped = useMemo(() => {
-        const map = new Map();
-        filtered.forEach((it) => {
-            const catId = it.categoryId ?? it.category ?? it.category_id ?? "uncategorized";
-            if (!map.has(catId)) map.set(catId, []);
-            map.get(catId).push(it);
-        });
-        return map; // Map<catId, items[]>
-    }, [filtered]);
+    const getCategoryNameById = (id: number) => {
+        if (!id) return "Sem categoria";
+        const found = categories.find((c) => c.id === id);
+        return found?.name ?? "Categoria desconhecida";
+    };
 
-    // obter nome da categoria por id
-    function getCategoryNameById(id) {
-        if (!id || id === "uncategorized") return "Sem categoria";
-        const found = categories.find((c) => String(c.id ?? c._id ?? c.value) === String(id));
-        return found ? (found.name ?? found.title ?? "Sem nome") : "Sem categoria";
-    }
-
-    // abrir modal edição
-    function openEdit(item) {
-        setEditItem({
-            // clone to avoid mutating original until save
-            ...item,
-            // normalize published boolean
-            published: item.published === true || item.published === "true" || item.published === 1,
-            // previewUrl if exists
-            previewUrl: item.imageUrl ?? item.image ?? item.thumbnail ?? null
-        });
+    // --- FUNÇÕES DE CRUD ---
+    const openEditModal = (item: Product) => {
+        setEditItem({ ...item });
         setEditOpen(true);
-    }
+    };
 
-    // excluir item
-    async function handleDelete(item) {
-        const id = item.id ?? item._id ?? item._ID ?? item.ID;
-        if (!id) {
-            Swal.fire({ icon: "error", title: "Erro", text: "Item sem ID" });
-            return;
-        }
-
+    const handleDelete = async (item: Product) => {
         const result = await Swal.fire({
-            title: `Excluir "${item.name ?? item.title ?? 'item'}"?`,
+            title: `Excluir "${item.title}"?`,
             text: "Essa ação não poderá ser desfeita.",
             icon: "warning",
             showCancelButton: true,
-            confirmButtonText: "Excluir",
-            cancelButtonText: "Cancelar"
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Sim, excluir!",
+            cancelButtonText: "Cancelar",
         });
 
         if (!result.isConfirmed) return;
 
         try {
-            Swal.fire({ title: "Excluindo...", didOpen: () => Swal.showLoading() });
-            const res = await fetch((UrlProducts.deleteProduct ?? (UrlProducts.deleteProduct + "")) + id, {
-                method: "DELETE"
-            });
-
+            const res = await fetch(UrlProducts.deleteProduct(item.id), { method: "DELETE" });
             if (!res.ok) {
-                const txt = await res.text();
-                throw new Error(txt || `Erro ${res.status}`);
+                const errorData = await res.json();
+                throw new Error(errorData.message || `Erro ${res.status}`);
             }
-
-            Swal.fire({ icon: "success", title: "Excluído", text: "Item excluído com sucesso." });
-            // recarregar lista
-            await fetchItems();
-        } catch (err) {
-            console.error(err);
-            Swal.fire({ icon: "error", title: "Erro", text: "Não foi possível excluir o item." });
+            Swal.fire({ icon: "success", title: "Excluído!", text: "O item foi removido." });
+            fetchItems();
+        } catch (err: any) {
+            Swal.fire({ icon: "error", title: "Erro ao excluir", text: err.message });
         }
-    }
+    };
 
-    // salvar edição (envia FormData)
-    async function handleSaveEdit(updated) {
-        const id = updated.id ?? updated._id ?? updated.ID;
-        if (!id) {
-            Swal.fire({ icon: "error", title: "Erro", text: "ID ausente" });
-            return;
-        }
-
+    const handleSave = async (updatedItem: Product) => {
         setIsSaving(true);
         try {
-            const form = new FormData();
-            form.append("title", updated.title ?? "");
-            form.append("price", updated.price ?? "");
-            form.append("content", updated.content ?? "");
-            form.append("published", updated.published ? "true" : "false");
-            // category id if exists
-            if (updated.categoryId) form.append("categoryId", String(updated.categoryId));
-            // image file
-            if (updated.newImageFile) form.append("image", updated.newImageFile);
+            const formData = new FormData();
+            formData.append("title", updatedItem.title ?? "");
+            formData.append("content", updatedItem.content ?? "");
+            formData.append("price", String(updatedItem.price ?? "0"));
+            formData.append("published", String(updatedItem.published));
+            formData.append("availability", JSON.stringify(updatedItem.availability || initialAvailability));
 
-            const url = (UrlProducts.updateProduct ?? (UrlProducts.updateProduct + "")) + id;
-            const res = await fetch(url, {
+            if (updatedItem.categoryId) {
+                formData.append("categoryId", String(updatedItem.categoryId));
+            }
+            if (updatedItem.newImageFile) {
+                formData.append("image", updatedItem.newImageFile);
+            }
+
+            const res = await fetch(UrlProducts.updateProduct(updatedItem.id), {
                 method: "PUT",
-                body: form
+                body: formData,
             });
 
             if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `Erro ${res.status}`);
+                const errorData = await res.json();
+                throw new Error(errorData.message || `Erro ${res.status}`);
             }
 
-            await res.json();
-            Swal.fire({ icon: "success", title: "Atualizado", text: "Item atualizado com sucesso." });
+            Swal.fire({ icon: "success", title: "Salvo!", text: "Item atualizado com sucesso." });
             setEditOpen(false);
-            setEditItem(null);
             fetchItems();
-        } catch (err) {
-            console.error(err);
-            Swal.fire({ icon: "error", title: "Erro", text: "Falha ao atualizar item." });
+        } catch (err: any) {
+            Swal.fire({ icon: "error", title: "Erro ao salvar", text: err.message });
         } finally {
             setIsSaving(false);
         }
-    }
+    };
 
-    // --- Renderização ---
+    // --- RENDERIZAÇÃO ---
     return (
         <>
-        <Navbar />
-        <div className="min-h-screen p-6 bg-gray-50">
-            <div className="max-w-6xl mx-auto space-y-4">
-                <header className="flex items-center justify-between">
-                    <h1 className="text-2xl font-semibold text-gray-900">Ver itens</h1>
+            <Navbar />
+            <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+                <div className="max-w-7xl mx-auto">
+                    <header className="mb-8">
+                        <h1 className="text-2xl font-semibold text-gray-800">Meus Produtos</h1>
+                        <p className="text-sm text-gray-500 mt-1">Visualize, edite e gerencie todos os seus itens cadastrados.</p>
+                    </header>
 
-                    {/* barra de busca e filtros */}
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1 shadow-sm">
-                            <Search size={16} className="text-gray-500" />
-                            <input
-                                placeholder="Buscar por nome..."
-                                value={q}
-                                onChange={(e) => setQ(e.target.value)}
-                                className="outline-none text-sm"
-                                aria-label="Buscar por nome"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1 shadow-sm">
-                            <Calendar size={16} />
-                            <input
-                                type="date"
-                                value={dateFrom}
-                                onChange={(e) => setDateFrom(e.target.value)}
-                                className="text-sm outline-none"
-                                aria-label="Data de"
-                                title="Data inicial"
-                            />
-                            <span className="text-sm text-gray-400 px-1">—</span>
-                            <input
-                                type="date"
-                                value={dateTo}
-                                onChange={(e) => setDateTo(e.target.value)}
-                                className="text-sm outline-none"
-                                aria-label="Data até"
-                                title="Data final"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1 shadow-sm">
-                            <Filter size={16} />
-                            <select
-                                value={publishedFilter}
-                                onChange={(e) => setPublishedFilter(e.target.value)}
-                                className="text-sm outline-none bg-transparent"
-                                aria-label="Filtrar por publicado"
-                            >
-                                <option value="all">Todos</option>
-                                <option value="published">Publicado</option>
-                                <option value="unpublished">Não publicado</option>
-                            </select>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="relative">
+                                <Search className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20}/>
+                                <input
+                                    placeholder="Buscar por título..."
+                                    value={q}
+                                    onChange={(e) => setQ(e.target.value)}
+                                    className="block w-full pl-10 pr-3 py-2.5 text-sm text-gray-900 bg-transparent rounded-lg border border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-600"
+                                />
+                            </div>
+                             <div className="relative">
+                                <Filter className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20}/>
+                                <select
+                                    value={publishedFilter}
+                                    onChange={(e) => setPublishedFilter(e.target.value)}
+                                    className="block w-full pl-10 pr-3 py-2.5 text-sm text-gray-900 bg-transparent rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600"
+                                >
+                                    <option value="all">Todos os status</option>
+                                    <option value="true">Publicados</option>
+                                    <option value="false">Rascunhos</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                </header>
 
-                {/* loading / error */}
-                {loading ? (
-                    <div className="p-6 bg-white rounded-lg shadow text-center">Carregando...</div>
-                ) : error ? (
-                    <div className="p-6 bg-red-50 rounded-lg text-red-600">{error}</div>
-                ) : (
-                    <>
-                        {/* tabela agrupada por categoria */}
-                        {[...grouped.keys()].length === 0 ? (
-                            <div className="p-6 bg-white rounded-lg shadow text-center">Nenhum item encontrado.</div>
-                        ) : (
-                            <div className="space-y-6">
-                                {[...grouped.keys()].map((catId) => {
-                                    const groupItems = grouped.get(catId) ?? [];
-                                    const catName = getCategoryNameById(catId);
-                                    return (
-                                        <section key={catId} className="bg-white rounded-lg shadow p-4">
-                                            <div className="flex items-center justify-between border-b pb-2 mb-3">
-                                                <h3 className="font-semibold text-gray-800">{catName} <span className="text-sm text-gray-500">({groupItems.length})</span></h3>
-                                                <div className="text-sm text-gray-500">{/* opcional ações de grupo */}</div>
-                                            </div>
+                    {loading ? (
+                        <div className="text-center p-10 text-gray-500">Carregando produtos...</div>
+                    ) : error ? (
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+                            <p className="font-bold">Erro</p>
+                            <p>{error}</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-8">
+                            {filteredItems.length === 0 ? (
+                                <div className="text-center p-10 bg-white rounded-2xl shadow-sm border border-gray-200">Nenhum item encontrado.</div>
+                            ) : (
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                                     <div className="hidden md:block">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-50">
+                                                <tr className="text-left text-gray-600">
+                                                    <th className="p-4 font-semibold">Produto</th>
+                                                    <th className="p-4 font-semibold">Preço</th>
+                                                    <th className="p-4 font-semibold">Status</th>
+                                                    <th className="p-4 font-semibold">Categoria</th>
+                                                    <th className="p-4 font-semibold text-right">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {filteredItems.map((item) => (
+                                                    <ItemTableRow key={item.id} item={item} categoryName={getCategoryNameById(item.categoryId)} onEdit={openEditModal} onDelete={handleDelete} />
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="block md:hidden divide-y divide-gray-200">
+                                        {filteredItems.map((item) => (
+                                            <ItemCard key={item.id} item={item} categoryName={getCategoryNameById(item.categoryId)} onEdit={openEditModal} onDelete={handleDelete} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
 
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full text-sm table-auto">
-                                                    <thead>
-                                                        <tr className="text-left text-gray-600 border-b">
-                                                            <th className="p-2">Produto</th>
-                                                            <th className="p-2">Preço</th>
-                                                            <th className="p-2">Publicado</th>
-                                                            <th className="p-2">Data</th>
-                                                            <th className="p-2 text-right">Ações</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {groupItems.map((it) => {
-                                                            const id = it.id ?? it._id ?? it.ID;
-                                                            const date = getItemDate(it);
-                                                            return (
-                                                                <tr key={id ?? Math.random()} className="border-b last:border-none">
-                                                                    <td className="p-2">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
-                                                                                {it.imageUrl || it.image ? (
-                                                                                    <img src={it.imageUrl ?? it.image} alt={it.name ?? it.title} className="w-full h-full object-cover" />
-                                                                                ) : (
-                                                                                    <ImageIcon size={18} className="text-gray-400" />
-                                                                                )}
-                                                                            </div>
-                                                                            <div>
-                                                                                <div className="font-medium text-gray-800">{it.name ?? it.title ?? "Sem nome"}</div>
-                                                                                <div className="text-xs text-gray-500">{it.sku ? `SKU: ${it.sku}` : ""}</div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </td>
-
-                                                                    <td className="p-2">{it.price ?? "—"}</td>
-                                                                    <td className="p-2">
-                                                                        {it.published === true || it.published === "true" || it.published === 1 ? (
-                                                                            <span className="inline-flex items-center gap-1 text-green-700 bg-green-50 px-2 py-1 rounded text-xs">
-                                                                                <Check size={12} /> Publicado
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-1 rounded text-xs">
-                                                                                Não publicado
-                                                                            </span>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="p-2">{date ? date.toLocaleString() : "—"}</td>
-                                                                    <td className="p-2 text-right">
-                                                                        <div className="inline-flex items-center gap-2">
-                                                                            <button
-                                                                                title="Editar"
-                                                                                onClick={() => openEdit(it)}
-                                                                                className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100"
-                                                                            >
-                                                                                <Edit2 size={14} /> Editar
-                                                                            </button>
-
-                                                                            <button
-                                                                                title="Excluir"
-                                                                                onClick={() => handleDelete(it)}
-                                                                                className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100"
-                                                                            >
-                                                                                <Trash2 size={14} /> Excluir
-                                                                            </button>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </section>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </>
+                {editOpen && editItem && (
+                    <EditModal
+                        item={editItem}
+                        categories={categories}
+                        isOpen={editOpen}
+                        isSaving={isSaving}
+                        onClose={() => setEditOpen(false)}
+                        onSave={handleSave}
+                    />
                 )}
             </div>
-
-            {/* --- Modal de edição (react modal simples) --- */}
-            {editOpen && editItem && (
-                <EditModal
-                    item={editItem}
-                    setItem={setEditItem}
-                    categories={categories}
-                    loading={isSaving}
-                    onClose={() => { setEditOpen(false); setEditItem(null); }}
-                    onSave={(updated) => handleSaveEdit(updated)}
-                />
-            )}
-        </div>
         </>
     );
 }
 
-/* -----------------------------
-   Componente EditModal (interno)
-   ----------------------------- */
-function EditModal({ item, setItem, categories, loading, onClose, onSave }) {
-    // item: objeto clonável
-    const [local, setLocal] = useState({ ...item });
-    const [preview, setPreview] = useState(local.previewUrl ?? null);
+// --- COMPONENTES AUXILIARES ---
 
-    useEffect(() => {
-        setLocal({ ...item });
-        setPreview(item.previewUrl ?? item.imageUrl ?? item.image ?? null);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item]);
+interface ItemProps {
+    item: Product;
+    categoryName: string;
+    onEdit: (item: Product) => void;
+    onDelete: (item: Product) => void;
+}
 
-    function handleFileChange(e) {
-        const f = e.target.files?.[0] ?? null;
-        if (f) {
-            setLocal((s) => ({ ...s, newImageFile: f }));
-            setPreview(URL.createObjectURL(f));
-        }
-    }
-
+function ItemTableRow({ item, categoryName, onEdit, onDelete }: ItemProps) {
+    const imageUrl = item.image ? `${API_BASE_URL}/${item.image}` : null;
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Editar item</h3>
-                    <div className="flex gap-2">
-                        <button onClick={onClose} className="rounded-full p-2 hover:bg-gray-100"><X size={16} /></button>
+        <tr className="hover:bg-gray-50">
+            <td className="p-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                        {imageUrl ? <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <ImageIcon size={24} className="m-auto text-gray-400" />}
+                    </div>
+                    <span className="font-medium text-gray-800">{item.title}</span>
+                </div>
+            </td>
+            <td className="p-4 text-gray-700">R$ {parseFloat(String(item.price || 0)).toFixed(2)}</td>
+            <td className="p-4">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${String(item.published) === 'true' ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
+                    <span className={`h-2 w-2 rounded-full ${String(item.published) === 'true' ? "bg-green-500" : "bg-yellow-500"}`}></span>
+                    {String(item.published) === 'true' ? "Publicado" : "Rascunho"}
+                </span>
+            </td>
+            <td className="p-4 text-gray-700">{categoryName}</td>
+            <td className="p-4 text-right">
+                <div className="inline-flex items-center gap-2">
+                    <button onClick={() => onEdit(item)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-full"><Edit2 size={16} /></button>
+                    <button onClick={() => onDelete(item)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-gray-100 rounded-full"><Trash2 size={16} /></button>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+function ItemCard({ item, categoryName, onEdit, onDelete }: ItemProps) {
+    const imageUrl = item.image ? `${API_BASE_URL}/${item.image}` : null;
+    return (
+        <div className="p-4">
+            <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                         {imageUrl ? <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <ImageIcon size={32} className="m-auto text-gray-400" />}
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-800">{item.title}</h3>
+                        <p className="text-gray-600 font-semibold">R$ {parseFloat(String(item.price || 0)).toFixed(2)}</p>
+                        <p className="text-xs text-gray-500 mt-1">{categoryName}</p>
                     </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="md:col-span-2 space-y-3">
-                        <label className="block">
-                            <span className="text-sm text-gray-600">Título</span>
-                            <input value={local.title ?? local.name ?? ""} onChange={(e) => setLocal({ ...local, title: e.target.value, name: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2" />
-                        </label>
-
-                        <label className="block">
-                            <span className="text-sm text-gray-600">Preço</span>
-                            <input value={local.price ?? ""} onChange={(e) => setLocal({ ...local, price: e.target.value })} className="mt-1 w-48 rounded-lg border px-3 py-2" />
-                        </label>
-
-                        <label className="block">
-                            <span className="text-sm text-gray-600">Descrição</span>
-                            <textarea value={local.content ?? ""} onChange={(e) => setLocal({ ...local, content: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 min-h-[100px]"></textarea>
-                        </label>
-
-                        <label className="block">
-                            <span className="text-sm text-gray-600">Categoria</span>
-                            <select value={local.categoryId ?? local.category ?? ""} onChange={(e) => setLocal({ ...local, categoryId: e.target.value })} className="mt-1 rounded-lg border px-3 py-2 w-full">
-                                <option value="">— Sem categoria —</option>
-                                {categories.map((c) => (
-                                    <option key={c.id ?? c._id ?? c.value} value={c.id ?? c._id ?? c.value}>
-                                        {c.name ?? c.title ?? "Sem nome"}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-
-                        <label className="inline-flex items-center gap-2 mt-2">
-                            <input type="checkbox" checked={local.published === true || local.published === "true" || local.published === 1} onChange={(e) => setLocal({ ...local, published: e.target.checked })} />
-                            <span className="text-sm text-gray-700">Publicar</span>
-                        </label>
+                <details className="relative">
+                    <summary className="list-none cursor-pointer p-2 rounded-full hover:bg-gray-100"><MoreVertical size={20} className="text-gray-600" /></summary>
+                    <div className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-lg z-10 border border-gray-100">
+                        <button onClick={() => onEdit(item)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Edit2 size={14} /> Editar</button>
+                        <button onClick={() => onDelete(item)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} /> Excluir</button>
                     </div>
-
-                    <div className="space-y-3">
-                        <div className="rounded-lg border p-3 bg-gray-50 flex flex-col items-center gap-3">
-                            {preview ? (
-                                <img src={preview} alt="preview" className="w-full h-36 object-cover rounded" />
-                            ) : (
-                                <div className="w-full h-36 flex items-center justify-center text-gray-400">
-                                    <ImageIcon size={36} />
-                                </div>
-                            )}
-
-                            <div className="w-full flex gap-2">
-                                <label className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-white border rounded cursor-pointer">
-                                    <ImageIcon size={16} /> Trocar imagem
-                                    <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                                </label>
-
-                                <button type="button" onClick={() => { setLocal({ ...local, newImageFile: null }); setPreview(null); }} className="px-3 py-2 border rounded">Remover</button>
-                            </div>
-                        </div>
-
-                        <div className="text-sm text-gray-500">
-                            ID: <span className="text-xs text-gray-400">{local.id ?? local._id ?? "—"}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 rounded border">Cancelar</button>
-                    <button
-                        onClick={() => onSave(local)}
-                        disabled={loading}
-                        className="px-4 py-2 rounded bg-blue-600 text-white inline-flex items-center gap-2"
-                    >
-                        {loading ? "Salvando..." : (<><Check size={14} /> Salvar</>)}
-                    </button>
-                </div>
+                </details>
+            </div>
+            <div className="flex items-center justify-end text-sm mt-2">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${String(item.published) === 'true' ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
+                    <span className={`h-2 w-2 rounded-full ${String(item.published) === 'true' ? "bg-green-500" : "bg-yellow-500"}`}></span>
+                    {String(item.published) === 'true' ? "Publicado" : "Rascunho"}
+                </span>
             </div>
         </div>
     );
 }
+
+interface EditModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (item: Product) => void;
+    isSaving: boolean;
+    item: Product;
+    categories: Category[];
+}
+
+function EditModal({ isOpen, onClose, onSave, isSaving, item, categories }: EditModalProps) {
+    const [localItem, setLocalItem] = useState<Product>({ ...item });
+    const [previewUrl, setPreviewUrl] = useState<string | null>(item?.image ? `${API_BASE_URL}/${item.image}` : null);
+
+    useEffect(() => {
+        if (isOpen) {
+            setLocalItem({ ...item, availability: item.availability || initialAvailability });
+            setPreviewUrl(item?.image ? `${API_BASE_URL}/${item.image}` : null);
+        }
+    }, [item, isOpen]);
+
+    const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        const isCheckbox = type === 'checkbox';
+        const checkedValue = (e.target as HTMLInputElement).checked;
+        setLocalItem(prev => ({ ...prev, [name]: isCheckbox ? checkedValue : value }));
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setLocalItem(prev => ({ ...prev, newImageFile: file }));
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+            <div className="w-full max-w-4xl bg-gray-100 rounded-2xl shadow-xl transform transition-all" onClick={e => e.stopPropagation()}>
+                 <header className="flex items-center justify-between p-4 sm:p-6 border-b bg-white rounded-t-2xl">
+                    <h2 className="text-lg font-semibold text-gray-800">Editar Produto</h2>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={20} /></button>
+                </header>
+
+                <div className="p-4 sm:p-6 max-h-[75vh] overflow-y-auto">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="relative">
+                                    <input name="title" value={localItem.title ?? ''} onChange={handleFieldChange} className="block px-3.5 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" placeholder=" " />
+                                    <label className="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">Nome do Produto</label>
+                                </div>
+                                <div className="relative">
+                                    <CircleDollarSign className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20}/>
+                                    <input name="price" type="number" value={localItem.price ?? ''} onChange={handleFieldChange} className="block pl-10 pr-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" placeholder=" " />
+                                    <label className="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">Preço</label>
+                                </div>
+                            </div>
+                            <textarea name="content" value={localItem.content ?? ''} onChange={handleFieldChange} rows={6} className="block p-2.5 w-full text-sm text-gray-900 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500" placeholder="Descrição do produto..."></textarea>
+                        </div>
+                        <div className="space-y-8">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+                                <h3 className="font-medium text-gray-900">Mídia</h3>
+                                <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center text-center h-48">
+                                    {previewUrl ? <img src={previewUrl} alt="Preview" className="w-full h-full object-contain rounded-md" /> : <ImageIcon size={40} className="text-gray-300" />}
+                                </div>
+                                <label htmlFor="image-upload-modal" className="w-full text-center cursor-pointer bg-gray-100 border border-gray-200 text-gray-700 rounded-lg px-4 py-2 text-sm hover:bg-gray-200 block">Trocar Imagem</label>
+                                <input type="file" id="image-upload-modal" accept="image/*" onChange={handleFileChange} className="hidden" />
+                            </div>
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+                                <h3 className="font-medium text-gray-900">Organização</h3>
+                                <select name="categoryId" value={localItem.categoryId ?? ''} onChange={handleFieldChange} className="block w-full p-2.5 text-sm text-gray-900 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Sem Categoria</option>
+                                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                                </select>
+                                <div className="flex items-center justify-between pt-4 border-t">
+                                    <label className="text-sm font-medium text-gray-900">Visibilidade</label>
+                                    <input type="checkbox" name="published" checked={!!localItem.published} onChange={handleFieldChange} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                </div>
+                            </div>
+                             <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+                                <div className="p-6 border-b border-gray-200"><h2 className="text-lg font-medium text-gray-900 flex items-center gap-2"><Clock size={18}/> Disponibilidade</h2></div>
+                                <div className="p-6">
+                                    <AvailabilityManager 
+                                        availability={localItem.availability || initialAvailability} 
+                                        setAvailability={(newAvailability) => setLocalItem(prev => ({...prev, availability: newAvailability}))} 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer className="flex justify-end gap-3 p-4 bg-white/80 backdrop-blur-sm border-t rounded-b-2xl">
+                    <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-full border bg-white text-sm font-semibold text-gray-800 hover:bg-gray-100">Cancelar</button>
+                    <button onClick={() => onSave(localItem)} disabled={isSaving} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-transparent bg-blue-600 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-blue-400">
+                        {isSaving ? "Salvando..." : <><Check size={18} /> Salvar Alterações</>}
+                    </button>
+                </footer>
+            </div>
+        </div>
+    );
+}
+
+// --- COMPONENTE DE GESTÃO DE HORÁRIOS ---
+const AvailabilityManager: React.FC<{ availability: Availability; setAvailability: (newAvailability: Availability) => void }> = ({ availability, setAvailability }) => {
+    const daysOfWeek = [
+        { key: 'monday', label: 'Seg', fullName: 'Segunda-feira' }, { key: 'tuesday', label: 'Ter', fullName: 'Terça-feira' }, 
+        { key: 'wednesday', label: 'Qua', fullName: 'Quarta-feira' }, { key: 'thursday', label: 'Qui', fullName: 'Quinta-feira' }, 
+        { key: 'friday', label: 'Sex', fullName: 'Sexta-feira' }, { key: 'saturday', label: 'Sáb', fullName: 'Sábado' }, { key: 'sunday', label: 'Dom', fullName: 'Domingo' },
+    ];
+
+    const toggleDay = (day: keyof Availability) => {
+        const newAvailability = { ...availability };
+        newAvailability[day] = availability[day].length > 0 ? [] : [{ start: '09:00', end: '18:00' }];
+        setAvailability(newAvailability);
+    };
+
+    const handleTimeChange = (day: keyof Availability, index: number, type: 'start' | 'end', value: string) => {
+        const newAvailability = { ...availability };
+        const newSlots = [...newAvailability[day]];
+        newSlots[index][type] = value;
+        newAvailability[day] = newSlots;
+        setAvailability(newAvailability);
+    };
+
+    const addSlot = (day: keyof Availability) => {
+        const newAvailability = { ...availability };
+        newAvailability[day] = [...newAvailability[day], { start: '09:00', end: '18:00' }];
+        setAvailability(newAvailability);
+    };
+
+    const removeSlot = (day: keyof Availability, index: number) => {
+        const newAvailability = { ...availability };
+        newAvailability[day] = newAvailability[day].filter((_, i) => i !== index);
+        setAvailability(newAvailability);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between">
+                {daysOfWeek.map(dayInfo => {
+                    const dayKey = dayInfo.key as keyof Availability;
+                    const isActive = availability[dayKey] && availability[dayKey].length > 0;
+                    return (
+                        <button type="button" key={dayKey} onClick={() => toggleDay(dayKey)}
+                            className={`w-10 h-10 rounded-full text-sm font-semibold transition-colors ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                            {dayInfo.label}
+                        </button>
+                    );
+                })}
+            </div>
+             <div className="space-y-4 pt-4 max-h-48 overflow-y-auto">
+                {daysOfWeek.map(dayInfo => {
+                    const dayKey = dayInfo.key as keyof Availability;
+                    if (availability[dayKey] && availability[dayKey].length > 0) {
+                        return (
+                            <div key={dayKey}>
+                                <label className="font-semibold text-sm text-gray-800">{dayInfo.fullName}</label>
+                                {availability[dayKey].map((slot, index) => (
+                                    <div key={index} className="flex items-center gap-2 mt-2">
+                                        <input type="time" value={slot.start} onChange={e => handleTimeChange(dayKey, index, 'start', e.target.value)} className="w-full p-2 border rounded-md text-sm" />
+                                        <span>-</span>
+                                        <input type="time" value={slot.end} onChange={e => handleTimeChange(dayKey, index, 'end', e.target.value)} className="w-full p-2 border rounded-md text-sm" />
+                                        <button type="button" onClick={() => removeSlot(dayKey, index)} className="p-2 text-red-500 hover:bg-red-50 rounded-full">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => addSlot(dayKey)} className="text-xs text-blue-600 hover:underline mt-2">
+                                    + Adicionar intervalo
+                                </button>
+                            </div>
+                        );
+                    }
+                    return null;
+                })}
+            </div>
+        </div>
+    );
+};
