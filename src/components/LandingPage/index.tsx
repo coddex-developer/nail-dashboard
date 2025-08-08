@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { Gem, User, Menu, X, Sun, Moon, Search, List, ArrowRight, Instagram, Facebook, Twitter, LogOut, ChevronLeft, ChevronRight, Heart, Calendar } from 'lucide-react';
-import { UrlProducts, UrlCategories, BASE_URL } from '../admin/utils/scripts/url'; 
-
+import { Gem, User, Menu, X, Sun, Moon, Search, List, Instagram, Facebook, Twitter, LogOut, ChevronLeft, ChevronRight, Heart, Calendar } from 'lucide-react';
+import { UrlProducts, UrlCategories } from '../admin/utils/scripts/url'; 
+import { API_BASE_URL } from '../admin/utils/scripts/url';
 // --- CONFIGURAÇÕES E TIPOS ---
-const API_BASE_URL = import.meta.env.VITE_API_URL || BASE_URL;
 
 interface Category {
     id: number;

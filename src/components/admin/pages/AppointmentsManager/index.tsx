@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Swal from 'sweetalert2';
-import { Calendar, User, Tag, Clock, Search, Filter, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
+import { Calendar, User, Tag, Clock, Search, Filter, CheckCircle, XCircle, ChevronDown, MoreVertical } from 'lucide-react';
 import Navbar from '../../utils/Navbar'; // Ajuste o caminho conforme necessário
 import { UrlAppointments } from '../../utils/scripts/url'; // Importa as URLs corretas
 
@@ -134,15 +134,34 @@ export default function AppointmentsManager() {
                     {loading ? <p className="text-center p-8">A carregar agendamentos...</p> : 
                      error ? <p className="text-center p-8 text-red-500">{error}</p> :
                      (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
                             {filteredAppointments.length === 0 ? (
                                 <p className="text-center p-12 text-gray-500">Nenhum agendamento encontrado.</p>
                             ) : (
-                                <div className="divide-y divide-gray-200">
-                                    {filteredAppointments.map(app => (
-                                        <AppointmentItem key={app.id} appointment={app} onUpdateStatus={handleUpdateStatus} />
-                                    ))}
-                                </div>
+                                <>
+                                    {/* Tabela para Desktop */}
+                                    <table className="w-full text-sm hidden md:table">
+                                        <thead className="bg-gray-50">
+                                            <tr className="text-left text-gray-600">
+                                                <th className="p-4 font-semibold">Cliente</th>
+                                                <th className="p-4 font-semibold">Serviço</th>
+                                                <th className="p-4 font-semibold">Data & Hora</th>
+                                                <th className="p-4 font-semibold text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {filteredAppointments.map(app => (
+                                                <AppointmentRow key={app.id} appointment={app} onUpdateStatus={handleUpdateStatus} />
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {/* Cards para Mobile */}
+                                    <div className="divide-y divide-gray-200 md:hidden">
+                                        {filteredAppointments.map(app => (
+                                            <AppointmentCard key={app.id} appointment={app} onUpdateStatus={handleUpdateStatus} />
+                                        ))}
+                                    </div>
+                                </>
                             )}
                         </div>
                      )}
@@ -152,26 +171,55 @@ export default function AppointmentsManager() {
     );
 }
 
-// --- COMPONENTE DE ITEM DE AGENDAMENTO ---
+// --- COMPONENTES DE ITEM ---
 
-const AppointmentItem: React.FC<{ appointment: Appointment; onUpdateStatus: (id: number, status: AppointmentStatus) => void; }> = ({ appointment, onUpdateStatus }) => {
-    
+interface AppointmentItemProps {
+    appointment: Appointment;
+    onUpdateStatus: (id: number, status: AppointmentStatus) => void;
+}
+
+const AppointmentRow: React.FC<AppointmentItemProps> = ({ appointment, onUpdateStatus }) => {
     const { id, appointmentDate, status, user, post } = appointment;
     const date = new Date(appointmentDate);
-    const formattedDate = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const formattedDate = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
     const formattedTime = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     return (
-        <div className="p-4 flex flex-col md:flex-row items-start md:items-center gap-4 hover:bg-gray-50 transition-colors">
-            <div className="flex-1 flex items-center gap-4">
-                <img src={user.image || `https://placehold.co/100x100/E2E8F0/4A5568?text=${user.name?.[0] || 'U'}`} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
-                <div>
-                    <p className="font-semibold text-gray-800">{user.name}</p>
-                    <p className="text-sm text-gray-600 flex items-center gap-1.5"><Tag size={14} /> {post.title}</p>
+        <tr className="hover:bg-gray-50">
+            <td className="p-4">
+                <div className="flex items-center gap-3">
+                    <img src={user.image || `https://placehold.co/100x100/E2E8F0/4A5568?text=${user.name?.[0] || 'U'}`} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
+                    <span className="font-semibold text-gray-800">{user.name}</span>
                 </div>
-            </div>
+            </td>
+            <td className="p-4 text-gray-600">{post.title}</td>
+            <td className="p-4 text-gray-600">{formattedDate} às {formattedTime}</td>
+            <td className="p-4 text-center">
+                <StatusDropdown currentStatus={status} onUpdateStatus={(newStatus) => onUpdateStatus(id, newStatus)} />
+            </td>
+        </tr>
+    );
+};
 
-            <div className="w-full md:w-auto flex items-center gap-4 text-sm text-gray-700 md:border-l md:pl-6">
+const AppointmentCard: React.FC<AppointmentItemProps> = ({ appointment, onUpdateStatus }) => {
+    const { id, appointmentDate, status, user, post } = appointment;
+    const date = new Date(appointmentDate);
+    const formattedDate = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
+    const formattedTime = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    return (
+        <div className="p-4 space-y-3">
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                    <img src={user.image || `https://placehold.co/100x100/E2E8F0/4A5568?text=${user.name?.[0] || 'U'}`} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
+                    <div>
+                        <p className="font-semibold text-gray-800">{user.name}</p>
+                        <p className="text-sm text-gray-600 flex items-center gap-1.5"><Tag size={14} /> {post.title}</p>
+                    </div>
+                </div>
+                 <StatusDropdown currentStatus={status} onUpdateStatus={(newStatus) => onUpdateStatus(id, newStatus)} />
+            </div>
+            <div className="flex items-center justify-between text-sm text-gray-700 pt-3 border-t">
                 <div className="flex items-center gap-2">
                     <Calendar size={16} className="text-gray-500" />
                     <span>{formattedDate}</span>
@@ -180,10 +228,6 @@ const AppointmentItem: React.FC<{ appointment: Appointment; onUpdateStatus: (id:
                     <Clock size={16} className="text-gray-500" />
                     <span>{formattedTime}</span>
                 </div>
-            </div>
-
-            <div className="w-full md:w-auto md:pl-6">
-                <StatusDropdown currentStatus={status} onUpdateStatus={(newStatus) => onUpdateStatus(id, newStatus)} />
             </div>
         </div>
     );
