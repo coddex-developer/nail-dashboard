@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, FormEvent } from "react";
+import React, { useEffect, useMemo, useState, FormEvent, useRef } from "react";
 import Swal from "sweetalert2";
 import {
     Edit2,
@@ -10,16 +10,14 @@ import {
     X,
     MoreVertical,
     CircleDollarSign,
-    LayoutGrid,
-    Eye,
     Clock
 } from "lucide-react";
-// Ajuste os paths de importação conforme a estrutura do seu projeto
 import { UrlProducts, UrlCategories } from "../../utils/scripts/url/index";
 import Navbar from "../../utils/Navbar";
+import { useNavigate } from "react-router-dom";
 
 // --- TIPOS E CONFIGURAÇÕES ---
-const API_BASE_URL = "http://localhost:3000"; // Ex: http://localhost:3000 ou https://suaapi.com
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:1000";
 
 interface Category {
     id: number;
@@ -59,41 +57,50 @@ const initialAvailability: Availability = {
 };
 
 export default function ViewItens() {
-    // --- ESTADOS ---
     const [items, setItems] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    // --- ESTADOS DE FILTRO ---
     const [q, setQ] = useState("");
     const [publishedFilter, setPublishedFilter] = useState("all");
-
-    // --- ESTADOS DO MODAL ---
     const [editOpen, setEditOpen] = useState(false);
     const [editItem, setEditItem] = useState<Product | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const navigate = useNavigate();
 
-    // --- FUNÇÕES DE FETCH ---
     const fetchItems = async () => {
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão inválida. Por favor, faça login novamente.", "error");
+            navigate('/admin');
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(UrlProducts.allProducts);
+            const res = await fetch(UrlProducts.allProducts, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.status === 401 || res.status === 403) throw new Error("Acesso não autorizado.");
             if (!res.ok) throw new Error(`Erro ao carregar produtos: ${res.statusText}`);
             const data = await res.json();
             setItems(Array.isArray(data) ? data : []);
         } catch (err: any) {
             console.error(err);
             setError("Não foi possível carregar os produtos.");
+            if (err.message.includes("Acesso não autorizado")) navigate('/admin');
         } finally {
             setLoading(false);
         }
     };
 
     const fetchCategories = async () => {
+        const token = localStorage.getItem('admin_token');
+        if (!token) return;
         try {
-            const res = await fetch(UrlCategories.allCategories);
+            const res = await fetch(UrlCategories.allCategories, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!res.ok) throw new Error(`Erro ao carregar categorias: ${res.statusText}`);
             const data = await res.json();
             setCategories(Array.isArray(data) ? data : []);
@@ -106,7 +113,6 @@ export default function ViewItens() {
         Promise.all([fetchItems(), fetchCategories()]);
     }, []);
 
-    // --- LÓGICA DE FILTRO E AGRUPAMENTO ---
     const filteredItems = useMemo(() => {
         const qLower = q.trim().toLowerCase();
         return items.filter((item) => {
@@ -123,7 +129,6 @@ export default function ViewItens() {
         return found?.name ?? "Categoria desconhecida";
     };
 
-    // --- FUNÇÕES DE CRUD ---
     const openEditModal = (item: Product) => {
         setEditItem({ ...item });
         setEditOpen(true);
@@ -143,8 +148,18 @@ export default function ViewItens() {
 
         if (!result.isConfirmed) return;
 
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão expirada.", "error");
+            navigate('/admin');
+            return;
+        }
+
         try {
-            const res = await fetch(UrlProducts.deleteProduct(item.id), { method: "DELETE" });
+            const res = await fetch(UrlProducts.deleteProduct(item.id), { 
+                method: "DELETE",
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!res.ok) {
                 const errorData = await res.json();
                 throw new Error(errorData.message || `Erro ${res.status}`);
@@ -157,6 +172,12 @@ export default function ViewItens() {
     };
 
     const handleSave = async (updatedItem: Product) => {
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão expirada.", "error");
+            navigate('/admin');
+            return;
+        }
         setIsSaving(true);
         try {
             const formData = new FormData();
@@ -175,6 +196,7 @@ export default function ViewItens() {
 
             const res = await fetch(UrlProducts.updateProduct(updatedItem.id), {
                 method: "PUT",
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData,
             });
 
@@ -193,7 +215,6 @@ export default function ViewItens() {
         }
     };
 
-    // --- RENDERIZAÇÃO ---
     return (
         <>
             <Navbar />
@@ -463,81 +484,3 @@ function EditModal({ isOpen, onClose, onSave, isSaving, item, categories }: Edit
         </div>
     );
 }
-
-// --- COMPONENTE DE GESTÃO DE HORÁRIOS ---
-const AvailabilityManager: React.FC<{ availability: Availability; setAvailability: (newAvailability: Availability) => void }> = ({ availability, setAvailability }) => {
-    const daysOfWeek = [
-        { key: 'monday', label: 'Seg', fullName: 'Segunda-feira' }, { key: 'tuesday', label: 'Ter', fullName: 'Terça-feira' }, 
-        { key: 'wednesday', label: 'Qua', fullName: 'Quarta-feira' }, { key: 'thursday', label: 'Qui', fullName: 'Quinta-feira' }, 
-        { key: 'friday', label: 'Sex', fullName: 'Sexta-feira' }, { key: 'saturday', label: 'Sáb', fullName: 'Sábado' }, { key: 'sunday', label: 'Dom', fullName: 'Domingo' },
-    ];
-
-    const toggleDay = (day: keyof Availability) => {
-        const newAvailability = { ...availability };
-        newAvailability[day] = availability[day].length > 0 ? [] : [{ start: '09:00', end: '18:00' }];
-        setAvailability(newAvailability);
-    };
-
-    const handleTimeChange = (day: keyof Availability, index: number, type: 'start' | 'end', value: string) => {
-        const newAvailability = { ...availability };
-        const newSlots = [...newAvailability[day]];
-        newSlots[index][type] = value;
-        newAvailability[day] = newSlots;
-        setAvailability(newAvailability);
-    };
-
-    const addSlot = (day: keyof Availability) => {
-        const newAvailability = { ...availability };
-        newAvailability[day] = [...newAvailability[day], { start: '09:00', end: '18:00' }];
-        setAvailability(newAvailability);
-    };
-
-    const removeSlot = (day: keyof Availability, index: number) => {
-        const newAvailability = { ...availability };
-        newAvailability[day] = newAvailability[day].filter((_, i) => i !== index);
-        setAvailability(newAvailability);
-    };
-
-    return (
-        <div className="space-y-4">
-            <div className="flex justify-between">
-                {daysOfWeek.map(dayInfo => {
-                    const dayKey = dayInfo.key as keyof Availability;
-                    const isActive = availability[dayKey] && availability[dayKey].length > 0;
-                    return (
-                        <button type="button" key={dayKey} onClick={() => toggleDay(dayKey)}
-                            className={`w-10 h-10 rounded-full text-sm font-semibold transition-colors ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                            {dayInfo.label}
-                        </button>
-                    );
-                })}
-            </div>
-             <div className="space-y-4 pt-4 max-h-48 overflow-y-auto">
-                {daysOfWeek.map(dayInfo => {
-                    const dayKey = dayInfo.key as keyof Availability;
-                    if (availability[dayKey] && availability[dayKey].length > 0) {
-                        return (
-                            <div key={dayKey}>
-                                <label className="font-semibold text-sm text-gray-800">{dayInfo.fullName}</label>
-                                {availability[dayKey].map((slot, index) => (
-                                    <div key={index} className="flex items-center gap-2 mt-2">
-                                        <input type="time" value={slot.start} onChange={e => handleTimeChange(dayKey, index, 'start', e.target.value)} className="w-full p-2 border rounded-md text-sm" />
-                                        <span>-</span>
-                                        <input type="time" value={slot.end} onChange={e => handleTimeChange(dayKey, index, 'end', e.target.value)} className="w-full p-2 border rounded-md text-sm" />
-                                        <button type="button" onClick={() => removeSlot(dayKey, index)} className="p-2 text-red-500 hover:bg-red-50 rounded-full">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                ))}
-                                <button type="button" onClick={() => addSlot(dayKey)} className="text-xs text-blue-600 hover:underline mt-2">
-                                    + Adicionar intervalo
-                                </button>
-                            </div>
-                        );
-                    }
-                    return null;
-                })}
-            </div>
-        </div>
-    );
-};
