@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Package, CheckCircle, Clock, Users, ArrowRight, CalendarCheck2, Tag } from "lucide-react";
-// Ajuste os caminhos de importação conforme a estrutura do seu projeto
-import { UrlProducts, UrlCategories, UrlAppointments, UrlUsers, API_BASE_URL } from "../../utils/scripts/url";
+import { UrlProducts, UrlCategories, UrlAppointments, API_BASE_URL } from "../../utils/scripts/url";
 import Navbar from "../../utils/Navbar";
 
 // --- TIPOS ---
@@ -36,7 +35,7 @@ export default function Dashboard() {
         const fetchData = async () => {
             const token = localStorage.getItem('admin_token');
             if (!token) {
-                navigate('/admin'); // Redireciona se não houver token
+                navigate('/admin');
                 return;
             }
 
@@ -45,22 +44,21 @@ export default function Dashboard() {
 
             try {
                 const headers = { 'Authorization': `Bearer ${token}` };
+                const userUrl = `${API_BASE_URL}/admin/users`; // URL correta para buscar utilizadores
 
                 const [appointmentsRes, productsRes, categoriesRes, usersRes] = await Promise.all([
                     fetch(UrlAppointments.all, { headers }),
                     fetch(UrlProducts.allProducts, { headers }),
                     fetch(UrlCategories.allCategories, { headers }),
-                    fetch(UrlUsers.all, { headers })
+                    fetch(userUrl, { headers }) // Usando a URL correta
                 ]);
 
-                // Verifica se algum token foi invalidado
                 if ([appointmentsRes, productsRes, categoriesRes, usersRes].some(res => res.status === 401 || res.status === 403)) {
                     localStorage.removeItem('admin_token');
                     navigate('/admin');
                     return;
                 }
 
-                // Verifica se todas as respostas foram bem-sucedidas antes de tentar o .json()
                 for (const res of [appointmentsRes, productsRes, categoriesRes, usersRes]) {
                     if (!res.ok) {
                         throw new Error(`Falha ao buscar um dos recursos: ${res.statusText}`);
@@ -89,7 +87,7 @@ export default function Dashboard() {
     }, [navigate]);
 
     const stats = useMemo(() => {
-        const publishedCount = products.filter(item => item.published).length;
+        const publishedCount = products.filter(item => item.published === true || item.published === 'true').length;
         return {
             totalProducts: products.length,
             publishedProducts: publishedCount,
@@ -112,9 +110,7 @@ export default function Dashboard() {
         return (
             <>
                 <Navbar />
-                <div className="flex items-center justify-center min-h-screen bg-gray-50 text-gray-600">
-                    Carregando dados...
-                </div>
+                <SkeletonDashboard />
             </>
         );
     }
@@ -146,19 +142,17 @@ export default function Dashboard() {
                     </header>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                        {/* Coluna Principal */}
                         <div className="lg:col-span-2 space-y-8">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <StatCard icon={Package} title="Total de Produtos" value={stats.totalProducts} link="/admin/dashboard/produtos" />
                                 <StatCard icon={CheckCircle} title="Publicados" value={stats.publishedProducts} link="/admin/dashboard/produtos" />
                                 <StatCard icon={Clock} title="Rascunhos" value={stats.draftProducts} link="/admin/dashboard/produtos" />
                                 <StatCard icon={Tag} title="Categorias" value={stats.totalCategories} link="/admin/dashboard/categorias" />
-                                <StatCard icon={Users} title="Total de Clientes" value={stats.totalUsers} />
+                                <StatCard icon={Users} title="Total de Clientes" value={stats.totalUsers} link="/admin/dashboard/clientes" />
                                 <StatCard icon={CalendarCheck2} title="Agendamentos" value={stats.totalAppointments} link="/admin/dashboard/agendamentos" />
                             </div>
                         </div>
 
-                        {/* Coluna Lateral (Sidebar) */}
                         <div className="lg:col-span-1">
                              <section className="bg-white rounded-2xl shadow-sm border border-gray-200">
                                 <header className="p-6 border-b border-gray-200 flex justify-between items-center">
@@ -215,7 +209,7 @@ const AppointmentListItem: React.FC<{ appointment: Appointment }> = ({ appointme
     return (
         <div className="flex items-center gap-4 p-3 transition-colors hover:bg-gray-50 rounded-lg">
             <img 
-                src={appointment.user.image ? `${API_BASE_URL}/${appointment.user.image}` : `https://placehold.co/100x100/E2E8F0/4A5568?text=${appointment.user.name?.[0] || 'U'}`} 
+                src={appointment.user.image ? `${API_BASE_URL}/${appointment.user.image}` : `https://ui-avatars.com/api/?name=${appointment.user.name || 'U'}&background=random`} 
                 alt="Avatar do cliente" 
                 className="w-10 h-10 rounded-full object-cover" 
             />
@@ -230,3 +224,39 @@ const AppointmentListItem: React.FC<{ appointment: Appointment }> = ({ appointme
         </div>
     );
 };
+
+const SkeletonDashboard = () => (
+    <main className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+            <header className="mb-8">
+                <div className="h-9 w-48 bg-gray-200 rounded-md animate-pulse"></div>
+                <div className="h-5 w-64 bg-gray-200 rounded-md mt-2 animate-pulse"></div>
+            </header>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-2xl p-6 h-36 animate-pulse">
+                            <div className="h-12 w-12 rounded-xl bg-gray-200"></div>
+                            <div className="h-8 w-1/2 bg-gray-200 rounded-md mt-4"></div>
+                            <div className="h-4 w-1/3 bg-gray-200 rounded-md mt-2"></div>
+                        </div>
+                    ))}
+                </div>
+                <div className="lg:col-span-1 bg-white rounded-2xl p-6 h-96 animate-pulse">
+                    <div className="h-6 w-3/4 bg-gray-200 rounded-md mb-6"></div>
+                    <div className="space-y-4">
+                        {[...Array(4)].map((_, i) => (
+                             <div key={i} className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-gray-200"></div>
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-4 w-2/3 bg-gray-200 rounded"></div>
+                                    <div className="h-3 w-1/2 bg-gray-200 rounded"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+);
