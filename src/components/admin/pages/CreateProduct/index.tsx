@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, FormEvent } from "react";
 import Swal from "sweetalert2";
 import { UploadCloud, PlusCircle, Check, X, Text, CircleDollarSign, LayoutGrid, Eye, Clock, Trash2 } from "lucide-react";
-import { UrlProducts, UrlCategories } from "../../utils/scripts/url/index"; // Ajuste o caminho
-import Navbar from "../../utils/Navbar"; // Ajuste o caminho
+import { UrlProducts, UrlCategories } from "../../utils/scripts/url/index";
+import Navbar from "../../utils/Navbar";
+import { useNavigate } from "react-router-dom";
 
 // --- DEFINIÇÕES DE TIPO ---
 interface Category {
@@ -135,24 +136,33 @@ export default function CreateProduct() {
     const [availability, setAvailability] = useState<Availability>({
         monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [],
     });
-
-    // CORREÇÃO: A função de buscar categorias foi movida para o escopo do componente
-    const fetchCategoriesData = async () => {
-        try {
-            const res = await fetch(UrlCategories.allCategories);
-            if (!res.ok) throw new Error("Erro ao buscar categorias");
-            const data = await res.json();
-            setCategories(Array.isArray(data) ? data : []);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setCategoriesLoading(false);
-        }
-    };
+    const navigate = useNavigate();
 
     useEffect(() => {
+        const fetchCategoriesData = async () => {
+            const token = localStorage.getItem('admin_token');
+            if (!token) {
+                Swal.fire("Erro", "Sessão inválida. Por favor, faça login novamente.", "error");
+                navigate('/admin');
+                return;
+            }
+            
+            try {
+                const res = await fetch(UrlCategories.allCategories, { 
+                    headers: { 'Authorization': `Bearer ${token}` } 
+                });
+                if (!res.ok) throw new Error("Erro ao buscar categorias");
+                const data = await res.json();
+                setCategories(Array.isArray(data) ? data : []);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setCategoriesLoading(false);
+            }
+        };
+
         fetchCategoriesData();
-    }, []);
+    }, [navigate]);
 
     const handleFileSelect = (selectedFile: File | null) => {
         if (!selectedFile) {
@@ -187,18 +197,29 @@ export default function CreateProduct() {
         });
 
         if (!name) return;
+
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão expirada. Por favor, faça login novamente.", "error");
+            navigate('/admin');
+            return;
+        }
+
         try {
             const res = await fetch(UrlCategories.createCategory, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    'Authorization': `Bearer ${token}` 
+                },
                 body: JSON.stringify({ name: name.trim() }),
             });
             const newCategory = await res.json();
             if (!res.ok) throw new Error(newCategory.message || `Erro ${res.status}`);
             
             Swal.fire({ icon: "success", title: "Criada!", text: "A nova categoria foi adicionada." });
-            // CORREÇÃO: Agora a função está acessível e irá atualizar a lista
-            await fetchCategoriesData();
+            
+            setCategories(prev => [...prev, newCategory]);
             setSelectedCategory(String(newCategory.id));
         } catch (err: any) {
             Swal.fire({ icon: "error", title: "Erro", text: err.message });
@@ -217,10 +238,18 @@ export default function CreateProduct() {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!title.trim() || !price.trim() || !selectedCategory) {
-            Swal.fire("Atenção", "Título, preço e categoria são obrigatórios.", "warning");
+        if (!title.trim() || !price.trim() || !selectedCategory || !file) {
+            Swal.fire("Atenção", "Título, preço, categoria e imagem são obrigatórios.", "warning");
             return;
         }
+        
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão expirada. Por favor, faça login novamente.", "error");
+            navigate('/admin');
+            return;
+        }
+
         setIsLoading(true);
 
         const formData = new FormData();
@@ -230,13 +259,19 @@ export default function CreateProduct() {
         formData.append("published", String(published));
         formData.append("categoryId", selectedCategory);
         formData.append("availability", JSON.stringify(availability));
-        if (file) formData.append("image", file);
+        formData.append("image", file);
 
         try {
             const res = await fetch(UrlProducts.createProduct, {
                 method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
                 body: formData,
             });
+            if (res.status === 401 || res.status === 403) {
+                throw new Error("Sessão inválida. Faça login novamente.");
+            }
             const responseData = await res.json();
             if (!res.ok) throw new Error(responseData.message || "Erro ao criar produto");
             
@@ -244,6 +279,9 @@ export default function CreateProduct() {
             clearForm();
         } catch (err: any) {
             Swal.fire("Erro", err.message, "error");
+            if(err.message.includes("Sessão inválida")) {
+                navigate('/admin');
+            }
         } finally {
             setIsLoading(false);
         }

@@ -1,128 +1,122 @@
-import "./login.css";
+import { useState, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
+import { Gem, User, Lock, ArrowRight } from 'lucide-react';
+// Ajuste o caminho de importação conforme a sua estrutura de rotas
+import { UrlAdmin } from '../../utils/scripts/url'; 
+
 export default function Login() {
+    const [name, setName] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
+
+    const handleLogin = async (e: FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!name || !password) {
+            setError('Por favor, preencha todos os campos.');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const res = await fetch(UrlAdmin.login, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, password }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Credenciais inválidas.');
+            }
+
+            const { token } = await res.json();
+            
+            // Armazena o token para autenticação nas próximas requisições
+            localStorage.setItem('admin_token', token);
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Login bem-sucedido!',
+                text: 'A redirecionar para o painel...',
+                timer: 1500,
+                showConfirmButton: false,
+            });
+
+            navigate('/admin/dashboard');
+
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <>
-            <div className="container-login">
-
-                <div className="card-login">
-                    <input
-                        value=""
-                        className="blind-check"
-                        style={{visibility: "hidden"}}
-                        type="checkbox"
-                        id="blind-input"
-                        name="blindcheck"
-                        hidden
-                    />
-
-                    <label htmlFor="blind-input" className="blind_input">
-                        <span className="hide">Hide</span>
-                        <span className="show">Show</span>
-                    </label>
-
-                    <form className="form">
-                        <div className="title">Admin</div>
-
-                        <label className="label_input" htmlFor="email-input">Usuário</label>
-                        <input
-                            spellCheck="false"
-                            className="input"
-                            type="text"
-                            name="name"
-                            id="email-input"
-                        />
-
-                        <div className="frg_pss">
-                            <label className="label_input" htmlFor="password-input">Senha</label>
-                            <a href="#">Esqueceu a senha?</a>
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+            <main className="w-full max-w-md mx-auto p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
+                    <div className="flex flex-col items-center mb-8">
+                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
+                            <Gem className="text-white w-7 h-7" />
                         </div>
-                        <input
-                            spellCheck="false"
-                            className="input input-password"
-                            type="text"
-                            name="password"
-                            id="password-input"
-                        />
-                        <button className="submit bg-green-900" type="button">Entrar</button>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Acesso ao Painel</h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Insira as suas credenciais para continuar</p>
+                    </div>
+
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <User className="text-gray-400" size={20} />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Nome de utilizador"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="block w-full pl-10 pr-3 py-3 text-sm text-gray-900 dark:text-white bg-transparent rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-0 focus:border-blue-600"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div className="relative">
+                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Lock className="text-gray-400" size={20} />
+                            </div>
+                            <input
+                                type="password"
+                                placeholder="Senha"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="block w-full pl-10 pr-3 py-3 text-sm text-gray-900 dark:text-white bg-transparent rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-0 focus:border-blue-600"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        {error && (
+                            <div className="text-center text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                                {error}
+                            </div>
+                        )}
+
+                        <div>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
+                            >
+                                {loading ? 'A entrar...' : 'Entrar'}
+                                {!loading && <ArrowRight size={16} />}
+                            </button>
+                        </div>
                     </form>
-
-                    <label htmlFor="blind-input" className="avatar">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="35"
-                            height="35"
-                            viewBox="0 0 64 64"
-                            id="monkey"
-                        >
-                            <ellipse cx="53.7" cy="33" rx="8.3" ry="8.2" fill="#89664c"></ellipse>
-                            <ellipse cx="53.7" cy="33" rx="5.4" ry="5.4" fill="#ffc5d3"></ellipse>
-                            <ellipse cx="10.2" cy="33" rx="8.2" ry="8.2" fill="#89664c"></ellipse>
-                            <ellipse cx="10.2" cy="33" rx="5.4" ry="5.4" fill="#ffc5d3"></ellipse>
-                            <g fill="#89664c">
-                                <path
-                                    d="m43.4 10.8c1.1-.6 1.9-.9 1.9-.9-3.2-1.1-6-1.8-8.5-2.1 1.3-1 2.1-1.3 2.1-1.3-20.4-2.9-30.1 9-30.1 19.5h46.4c-.7-7.4-4.8-12.4-11.8-15.2"
-                                ></path>
-                                <path
-                                    d="m55.3 27.6c0-9.7-10.4-17.6-23.3-17.6s-23.3 7.9-23.3 17.6c0 2.3.6 4.4 1.6 6.4-1 2-1.6 4.2-1.6 6.4 0 9.7 10.4 17.6 23.3 17.6s23.3-7.9 23.3-17.6c0-2.3-.6-4.4-1.6-6.4 1-2 1.6-4.2 1.6-6.4"
-                                ></path>
-                            </g>
-                            <path
-                                d="m52 28.2c0-16.9-20-6.1-20-6.1s-20-10.8-20 6.1c0 4.7 2.9 9 7.5 11.7-1.3 1.7-2.1 3.6-2.1 5.7 0 6.1 6.6 11 14.7 11s14.7-4.9 14.7-11c0-2.1-.8-4-2.1-5.7 4.4-2.7 7.3-7 7.3-11.7"
-                                fill="#e0ac7e"
-                            ></path>
-                            <g fill="#3b302a" className="monkey-eye-nose">
-                                <path
-                                    d="m35.1 38.7c0 1.1-.4 2.1-1 2.1-.6 0-1-.9-1-2.1 0-1.1.4-2.1 1-2.1.6.1 1 1 1 2.1"
-                                ></path>
-                                <path
-                                    d="m30.9 38.7c0 1.1-.4 2.1-1 2.1-.6 0-1-.9-1-2.1 0-1.1.4-2.1 1-2.1.5.1 1 1 1 2.1"
-                                ></path>
-                                <ellipse
-                                    cx="40.7"
-                                    cy="31.7"
-                                    rx="3.5"
-                                    ry="4.5"
-                                    className="monkey-eye-r"
-                                ></ellipse>
-                                <ellipse
-                                    cx="23.3"
-                                    cy="31.7"
-                                    rx="3.5"
-                                    ry="4.5"
-                                    className="monkey-eye-l"
-                                ></ellipse>
-                            </g>
-                        </svg>
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="35"
-                            height="35"
-                            viewBox="0 0 64 64"
-                            id="monkey-hands"
-                        >
-                            <path
-                                fill="#89664C"
-                                d="M9.4,32.5L2.1,61.9H14c-1.6-7.7,4-21,4-21L9.4,32.5z"
-                            ></path>
-                            <path
-                                fill="#FFD6BB"
-                                d="M15.8,24.8c0,0,4.9-4.5,9.5-3.9c2.3,0.3-7.1,7.6-7.1,7.6s9.7-8.2,11.7-5.6c1.8,2.3-8.9,9.8-8.9,9.8
-	s10-8.1,9.6-4.6c-0.3,3.8-7.9,12.8-12.5,13.8C11.5,43.2,6.3,39,9.8,24.4C11.6,17,13.3,25.2,15.8,24.8"
-                            ></path>
-                            <path
-                                fill="#89664C"
-                                d="M54.8,32.5l7.3,29.4H50.2c1.6-7.7-4-21-4-21L54.8,32.5z"
-                            ></path>
-                            <path
-                                fill="#FFD6BB"
-                                d="M48.4,24.8c0,0-4.9-4.5-9.5-3.9c-2.3,0.3,7.1,7.6,7.1,7.6s-9.7-8.2-11.7-5.6c-1.8,2.3,8.9,9.8,8.9,9.8
-	s-10-8.1-9.7-4.6c0.4,3.8,8,12.8,12.6,13.8c6.6,1.3,11.8-2.9,8.3-17.5C52.6,17,50.9,25.2,48.4,24.8"
-                            ></path>
-                        </svg>
-                    </label>
                 </div>
-
-            </div>
-        </>
+            </main>
+        </div>
     );
-};
+}

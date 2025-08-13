@@ -12,11 +12,13 @@ import {
     User,
     ChevronDown,
     LayoutDashboard,
-    Package,
     PackagePlus,
-    CalendarClock
+    CalendarClock,
+    LogOut,
+    Users,
+    BookOpen
 } from "lucide-react";
-import { UrlNotifications } from "../../utils/scripts/url"; // Certifique-se de que este ficheiro exporta UrlNotifications
+import { UrlNotifications } from "../../utils/scripts/url";
 
 // --- TIPOS ---
 interface Notification {
@@ -49,6 +51,7 @@ interface MobileDrawerProps {
     isOpen: boolean;
     onClose: () => void;
     onNavigate: (path: string) => void;
+    onLogout: () => void;
 }
 
 // SVGs dos ícones para usar no SweetAlert
@@ -59,19 +62,27 @@ const calendarIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" heig
 export default function Navbar() {
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [storeOpen, setStoreOpen] = useState(false);
+    // Estados para os novos menus
+    const [catalogOpen, setCatalogOpen] = useState(false);
+    const [clientsOpen, setClientsOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    const storeRef = useRef<HTMLDivElement>(null);
+    // Refs para os novos menus
+    const catalogRef = useRef<HTMLDivElement>(null);
+    const clientsRef = useRef<HTMLDivElement>(null);
     const settingsRef = useRef<HTMLDivElement>(null);
 
     // Fecha dropdowns ao clicar fora
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (storeRef.current && !storeRef.current.contains(event.target as Node)) {
-                setStoreOpen(false);
+            if (catalogRef.current && !catalogRef.current.contains(event.target as Node)) {
+                setCatalogOpen(false);
+            }
+            if (clientsRef.current && !clientsRef.current.contains(event.target as Node)) {
+                setClientsOpen(false);
             }
             if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
                 setSettingsOpen(false);
@@ -81,12 +92,25 @@ export default function Navbar() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
     
+    const handleLogout = () => {
+        localStorage.removeItem('admin_token');
+        navigate('/admin');
+    };
+
     // Busca as notificações do backend
     useEffect(() => {
         const fetchNotifications = async () => {
+            const token = localStorage.getItem('admin_token');
+            if (!token) return;
+
             try {
-                const res = await fetch(UrlNotifications.all, { credentials: 'include' });
+                const res = await fetch(UrlNotifications.all, { 
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (!res.ok) {
+                    if (res.status === 401 || res.status === 403) {
+                        handleLogout();
+                    }
                     console.error("Falha ao buscar notificações");
                     return;
                 }
@@ -99,33 +123,34 @@ export default function Navbar() {
         };
 
         fetchNotifications();
-        const intervalId = setInterval(fetchNotifications, 30000); // Verifica por novas notificações a cada 30 segundos
+        const intervalId = setInterval(fetchNotifications, 30000);
 
-        return () => clearInterval(intervalId); // Limpa o intervalo quando o componente é desmontado
+        return () => clearInterval(intervalId);
     }, []);
 
     const go = (path: string) => {
         setMobileOpen(false);
+        setCatalogOpen(false);
+        setClientsOpen(false);
+        setSettingsOpen(false);
         navigate(path);
     };
 
     const markAllAsRead = async () => {
+        const token = localStorage.getItem('admin_token');
         const previouslyUnread = notifications.filter(n => !n.read);
-        if (previouslyUnread.length === 0) return;
+        if (previouslyUnread.length === 0 || !token) return;
 
-        // Atualização otimista na UI para feedback instantâneo
         setUnreadCount(0);
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
 
         try {
-            // Envia o pedido para o backend para marcar como lido na base de dados
             await fetch(UrlNotifications.markRead, { 
                 method: 'PUT',
-                credentials: 'include' 
+                headers: { 'Authorization': `Bearer ${token}` }
             });
         } catch (error) {
             console.error("Falha ao marcar notificações como lidas:", error);
-            // Reverte a alteração na UI em caso de erro
             setNotifications(prev => prev.map(n => previouslyUnread.find(p => p.id === n.id) ? { ...n, read: false } : n));
             setUnreadCount(previouslyUnread.length);
         }
@@ -164,39 +189,49 @@ export default function Navbar() {
         <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
-                    {/* Esquerda: Logo + Menu Desktop */}
                     <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => go("/dashboard")}>
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => go("/admin/dashboard")}>
                             <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
                                 <Store size={18} />
                             </div>
                             <span className="font-bold text-lg text-gray-800 hidden sm:block">Meu Painel</span>
                         </div>
                         <div className="hidden md:flex items-center gap-2">
-                            <div ref={storeRef} className="relative">
-                                <button onClick={() => setStoreOpen(s => !s)} className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition ${storeOpen ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-100'}`}>
-                                    <Package size={16} /> Loja <ChevronDown size={16} className={`transition-transform ${storeOpen ? 'rotate-180' : ''}`} />
+                            {/* Menu Catálogo */}
+                            <div ref={catalogRef} className="relative">
+                                <button onClick={() => setCatalogOpen(s => !s)} className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition ${catalogOpen ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                    <BookOpen size={16} /> Catálogo <ChevronDown size={16} className={`transition-transform ${catalogOpen ? 'rotate-180' : ''}`} />
                                 </button>
-                                {storeOpen && <DropdownMenu items={[
-                                    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-                                    { label: "Ver Produtos", icon: List, path: "/view-itens" },
-                                    { label: "Criar Produto", icon: PackagePlus, path: "/create-product" },
-                                    { label: "Categorias", icon: Tag, path: "/categories" },
-                                    { label: "Gerir Agendamentos", icon: CalendarClock, path: "/appointments" },
+                                {catalogOpen && <DropdownMenu items={[
+                                    { label: "Ver Produtos", icon: List, path: "/admin/dashboard/produtos" },
+                                    { label: "Criar Produto", icon: PackagePlus, path: "/admin/dashboard/produtos/novo" },
+                                    { label: "Categorias", icon: Tag, path: "/admin/dashboard/categorias" },
                                 ]} onNavigate={go} />}
                             </div>
+
+                            {/* Menu Clientes */}
+                            <div ref={clientsRef} className="relative">
+                                <button onClick={() => setClientsOpen(s => !s)} className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition ${clientsOpen ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                    <Users size={16} /> Clientes <ChevronDown size={16} className={`transition-transform ${clientsOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                {clientsOpen && <DropdownMenu items={[
+                                    { label: "Lista de Clientes", icon: Users, path: "/admin/dashboard/clientes" },
+                                    { label: "Agendamentos", icon: CalendarClock, path: "/admin/dashboard/agendamentos" },
+                                ]} onNavigate={go} />}
+                            </div>
+                            
+                            {/* Menu Configurações */}
                             <div ref={settingsRef} className="relative">
                                 <button onClick={() => setSettingsOpen(s => !s)} className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition ${settingsOpen ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-100'}`}>
-                                    <Settings size={16} /> Ajustes <ChevronDown size={16} className={`transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+                                    <Settings size={16} /> Configurações <ChevronDown size={16} className={`transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
                                 </button>
                                 {settingsOpen && <DropdownMenu items={[
-                                    { label: "Perfil Admin", icon: User, path: "/admin/settings" },
+                                    { label: "Perfil Admin", icon: User, path: "/admin/dashboard/configuracoes" },
                                 ]} onNavigate={go} />}
                             </div>
                         </div>
                     </div>
 
-                    {/* Direita: Ações */}
                     <div className="flex items-center gap-2">
                         <button onClick={openNotifications} className="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800">
                             <Bell size={20} />
@@ -221,8 +256,7 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* Mobile Drawer */}
-            <MobileDrawer isOpen={mobileOpen} onClose={() => setMobileOpen(false)} onNavigate={go} />
+            <MobileDrawer isOpen={mobileOpen} onClose={() => setMobileOpen(false)} onNavigate={go} onLogout={handleLogout} />
         </nav>
     );
 }
@@ -245,7 +279,7 @@ function DropdownMenu({ items, onNavigate }: DropdownMenuProps) {
     );
 }
 
-function MobileDrawer({ isOpen, onClose, onNavigate }: MobileDrawerProps) {
+function MobileDrawer({ isOpen, onClose, onNavigate, onLogout }: MobileDrawerProps) {
     return (
         <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${isOpen ? 'bg-black/40' : 'bg-transparent pointer-events-none'}`} onClick={onClose}>
             <div className={`fixed top-0 right-0 h-full w-4/5 max-w-sm bg-white shadow-xl transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`} onClick={e => e.stopPropagation()}>
@@ -254,15 +288,22 @@ function MobileDrawer({ isOpen, onClose, onNavigate }: MobileDrawerProps) {
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={20} /></button>
                 </div>
                 <div className="p-4 space-y-2">
-                    <p className="px-3 text-xs font-semibold text-gray-400 uppercase">Loja</p>
-                    <MobileNavItem icon={LayoutDashboard} label="Dashboard" onClick={() => onNavigate("/dashboard")} />
-                    <MobileNavItem icon={List} label="Ver Produtos" onClick={() => onNavigate("/view-itens")} />
-                    <MobileNavItem icon={PackagePlus} label="Criar Produto" onClick={() => onNavigate("/create-product")} />
-                    <MobileNavItem icon={Tag} label="Categorias" onClick={() => onNavigate("/categories")} />
-                    <MobileNavItem icon={CalendarClock} label="Agendamentos" onClick={() => onNavigate("/appointments")} />
+                    <MobileNavItem icon={LayoutDashboard} label="Dashboard" onClick={() => onNavigate("/admin/dashboard")} />
+                    <div className="pt-2 mt-2 border-t">
+                        <p className="px-3 text-xs font-semibold text-gray-400 uppercase">Catálogo</p>
+                        <MobileNavItem icon={List} label="Ver Produtos" onClick={() => onNavigate("/admin/dashboard/produtos")} />
+                        <MobileNavItem icon={PackagePlus} label="Criar Produto" onClick={() => onNavigate("/admin/dashboard/produtos/novo")} />
+                        <MobileNavItem icon={Tag} label="Categorias" onClick={() => onNavigate("/admin/dashboard/categorias")} />
+                    </div>
+                     <div className="pt-2 mt-2 border-t">
+                        <p className="px-3 text-xs font-semibold text-gray-400 uppercase">Clientes</p>
+                        <MobileNavItem icon={Users} label="Lista de Clientes" onClick={() => onNavigate("/admin/dashboard/clientes")} />
+                        <MobileNavItem icon={CalendarClock} label="Agendamentos" onClick={() => onNavigate("/admin/dashboard/agendamentos")} />
+                    </div>
                     <div className="pt-2 mt-2 border-t">
                         <p className="px-3 text-xs font-semibold text-gray-400 uppercase">Conta</p>
-                        <MobileNavItem icon={Settings} label="Ajustes" onClick={() => onNavigate("/admin/settings")} />
+                        <MobileNavItem icon={Settings} label="Configurações" onClick={() => onNavigate("/admin/dashboard/configuracoes")} />
+                        <MobileNavItem icon={LogOut} label="Sair" onClick={onLogout} />
                     </div>
                 </div>
             </div>

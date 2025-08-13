@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { PlusCircle, Edit2, Trash2, Tag, Search, Filter, MoreVertical } from "lucide-react";
-// Ajuste o path conforme seu projeto
 import { UrlCategories } from "../../utils/scripts/url/index";
 import Navbar from "../../utils/Navbar";
+import { useNavigate } from "react-router-dom";
 
 // --- TIPOS ---
 interface Category {
@@ -13,7 +13,6 @@ interface Category {
     _count?: {
         posts: number;
     };
-    // A API pode retornar a lista completa em vez da contagem
     posts?: any[];
 }
 
@@ -24,23 +23,32 @@ export default function CategoriesManager() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    // --- ESTADOS DE FILTRO ---
     const [q, setQ] = useState("");
     const [showFilter, setShowFilter] = useState<FilterType>("all");
+    const navigate = useNavigate();
 
-    // --- FUNÇÕES DE FETCH ---
     const fetchCategories = async () => {
         setLoading(true);
         setError(null);
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão inválida. Por favor, faça login novamente.", "error");
+            navigate('/admin');
+            return;
+        }
+
         try {
-            const res = await fetch(UrlCategories.allCategories);
+            const res = await fetch(UrlCategories.allCategories, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.status === 401 || res.status === 403) throw new Error("Acesso não autorizado.");
             if (!res.ok) throw new Error(`Erro ao carregar categorias: ${res.statusText}`);
             const data = await res.json();
             setCategories(Array.isArray(data) ? data : []);
         } catch (err: any) {
             console.error("Erro ao buscar categorias:", err);
-            setError("Não foi possível carregar as categorias.");
+            setError(err.message || "Não foi possível carregar as categorias.");
+            if (err.message.includes("Acesso não autorizado")) navigate('/admin');
         } finally {
             setLoading(false);
         }
@@ -50,7 +58,6 @@ export default function CategoriesManager() {
         fetchCategories();
     }, []);
 
-    // --- LÓGICA DE FILTRO ---
     const filteredCategories = useMemo(() => {
         const qLower = q.trim().toLowerCase();
         return categories.filter((c) => {
@@ -65,12 +72,11 @@ export default function CategoriesManager() {
         });
     }, [categories, q, showFilter]);
 
-    // --- FUNÇÕES DE CRUD ---
     const handleCreate = async () => {
         const { value: name } = await Swal.fire({
             title: "Criar Nova Categoria",
             input: "text",
-            inputPlaceholder: "Ex: Eletrônicos",
+            inputPlaceholder: "Ex: Cabelo",
             showCancelButton: true,
             confirmButtonText: "Criar",
             cancelButtonText: "Cancelar",
@@ -78,10 +84,21 @@ export default function CategoriesManager() {
         });
 
         if (!name) return;
+
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão expirada.", "error");
+            navigate('/admin');
+            return;
+        }
+
         try {
             const res = await fetch(UrlCategories.createCategory, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ name: name.trim() }),
             });
             if (!res.ok) {
@@ -108,10 +125,20 @@ export default function CategoriesManager() {
 
         if (!newName || newName.trim() === cat.name) return;
 
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão expirada.", "error");
+            navigate('/admin');
+            return;
+        }
+
         try {
             const res = await fetch(UrlCategories.updateCategory(cat.id), {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ name: newName.trim() }),
             });
             if (!res.ok) {
@@ -138,9 +165,19 @@ export default function CategoriesManager() {
         });
 
         if (!result.isConfirmed) return;
+        
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire("Erro", "Sessão expirada.", "error");
+            navigate('/admin');
+            return;
+        }
 
         try {
-            const res = await fetch(UrlCategories.deleteCategory(cat.id), { method: "DELETE" });
+            const res = await fetch(UrlCategories.deleteCategory(cat.id), { 
+                method: "DELETE",
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!res.ok) {
                 const errorData = await res.json();
                 throw new Error(errorData.message || `Erro ${res.status}`);
@@ -152,7 +189,6 @@ export default function CategoriesManager() {
         }
     };
 
-    // --- RENDERIZAÇÃO ---
     return (
         <>
             <Navbar />

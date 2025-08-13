@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Swal from 'sweetalert2';
-import { Calendar, User, Tag, Clock, Search, Filter, CheckCircle, XCircle, ChevronDown, MoreVertical } from 'lucide-react';
-import Navbar from '../../utils/Navbar'; // Ajuste o caminho conforme necessário
-import { UrlAppointments } from '../../utils/scripts/url'; // Importa as URLs corretas
+import { Calendar, Tag, Clock, Search, Filter, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
+import Navbar from '../../utils/Navbar';
+import { UrlAppointments } from '../../utils/scripts/url';
 
 // --- TIPOS ---
 type AppointmentStatus = 'CONFIRMED' | 'COMPLETED' | 'CANCELED';
@@ -36,8 +36,27 @@ export default function AppointmentsManager() {
         const fetchAppointments = async () => {
             setLoading(true);
             setError(null);
+            
+            // CORREÇÃO: Obter o token de autenticação do admin
+            const token = localStorage.getItem('admin_token');
+            if (!token) {
+                setError("Acesso não autorizado. Por favor, faça login novamente.");
+                setLoading(false);
+                // Opcional: redirecionar para a página de login
+                // navigate('/admin/login');
+                return;
+            }
+
             try {
-                const res = await fetch(UrlAppointments.all);
+                const res = await fetch(UrlAppointments.all, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error("Sessão inválida ou expirada. Faça login novamente.");
+                }
                 if (!res.ok) {
                     throw new Error("Não foi possível carregar os agendamentos do servidor.");
                 }
@@ -45,7 +64,7 @@ export default function AppointmentsManager() {
                 setAppointments(Array.isArray(data) ? data : []);
             } catch (err: any) {
                 setError(err.message || "Ocorreu um erro desconhecido.");
-                setAppointments([]); // Limpa os dados em caso de erro
+                setAppointments([]);
             } finally {
                 setLoading(false);
             }
@@ -56,7 +75,6 @@ export default function AppointmentsManager() {
     const filteredAppointments = useMemo(() => {
         return appointments.filter(app => {
             const appointmentDate = new Date(app.appointmentDate);
-            // Corrige a comparação de datas para ignorar a hora e o fuso horário
             const filterDate = dateFilter ? new Date(dateFilter + 'T00:00:00') : null;
 
             const matchesSearch = searchTerm === '' ||
@@ -76,20 +94,29 @@ export default function AppointmentsManager() {
 
     const handleUpdateStatus = async (id: number, status: AppointmentStatus) => {
         const originalAppointments = [...appointments];
-        // Atualização otimista na UI para feedback instantâneo
         setAppointments(prev => prev.map(app => app.id === id ? { ...app, status } : app));
         
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+            Swal.fire('Erro', 'Autenticação perdida. Por favor, faça login novamente.', 'error');
+            setAppointments(originalAppointments);
+            return;
+        }
+
         try {
             const res = await fetch(UrlAppointments.updateStatus(id), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                // CORREÇÃO: O método no backend é PATCH, não PUT
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ status }),
             });
             if (!res.ok) {
                 throw new Error("Falha ao atualizar status no servidor.");
             }
         } catch (error) {
-            // Reverte a alteração na UI em caso de erro na API
             setAppointments(originalAppointments);
             Swal.fire('Erro', 'Não foi possível atualizar o status.', 'error');
         }
@@ -134,12 +161,11 @@ export default function AppointmentsManager() {
                     {loading ? <p className="text-center p-8">A carregar agendamentos...</p> : 
                      error ? <p className="text-center p-8 text-red-500">{error}</p> :
                      (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                             {filteredAppointments.length === 0 ? (
                                 <p className="text-center p-12 text-gray-500">Nenhum agendamento encontrado.</p>
                             ) : (
                                 <>
-                                    {/* Tabela para Desktop */}
                                     <table className="w-full text-sm hidden md:table">
                                         <thead className="bg-gray-50">
                                             <tr className="text-left text-gray-600">
@@ -155,7 +181,6 @@ export default function AppointmentsManager() {
                                             ))}
                                         </tbody>
                                     </table>
-                                    {/* Cards para Mobile */}
                                     <div className="divide-y divide-gray-200 md:hidden">
                                         {filteredAppointments.map(app => (
                                             <AppointmentCard key={app.id} appointment={app} onUpdateStatus={handleUpdateStatus} />

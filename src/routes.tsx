@@ -1,50 +1,73 @@
 import { createBrowserRouter } from "react-router-dom";
-import Login from "./components/admin/pages/Login";
-import Dashboard from "./components/admin/pages/Dashboard";
-import ViewItens from "./components/admin/pages/ViewItens";
-import CategoriesManager from "./components/admin/pages/CategoriesManager";
-import AdminSettings from "./components/admin/pages/AdminSettings";
+
+// --- Páginas Públicas e de Cliente ---
 import LandingPage from "./components/LandingPage";
-import CreateProduct from "./components/admin/pages/CreateProduct";
-import AppointmentsManager from "./components/admin/pages/AppointmentsManager";
 import MyAppointments from "./components/client/pages/MyAppointments";
 
+// --- Páginas do Painel de Administração ---
+import Login from "./components/admin/pages/Login";
+import Dashboard from "./components/admin/pages/Dashboard";
+import CreateProduct from "./components/admin/pages/CreateProduct";
+import ViewItens from "./components/admin/pages/ViewItens";
+import CategoriesManager from "./components/admin/pages/CategoriesManager";
+import AppointmentsManager from "./components/admin/pages/AppointmentsManager";
+import AdminSettings from "./components/admin/pages/AdminSettings";
+import ClientsManager from "./components/admin/pages/ClientsManager"; // NOVO: Importado
+import ProtectedRoute from "./components/admin/auth/ProtectedRoute";
+
 const routes = createBrowserRouter([
-    {
-        path: "/admin",
-        element: <Login />
-    },
-    {
-        path: "/dashboard",
-        element: <Dashboard />
-    },
-    {
-        path: "/create-product",
-        element: < CreateProduct />
-    },
-    {
-        path: "/view-itens",
-        element: < ViewItens />
-    },
-    {
-        path: "/categories",
-        element: <CategoriesManager />
-    },
-    {
-        path: "/admin/settings",
-        element: < AdminSettings />
-    },
-    {
-        path: "/appointments",
-        element: <AppointmentsManager />
-    },
+    // ===============================================
+    // ROTAS PÚBLICAS E DE CLIENTES
+    // ===============================================
     {
         path: "/",
-        element: < LandingPage />
+        element: <LandingPage />,
     },
     {
-        path: "/auth/google",
-        element: < MyAppointments/>
+        path: "/meus-agendamentos",
+        element: <MyAppointments />,
+    },
+
+    // ===============================================
+    // ROTAS DO PAINEL DE ADMINISTRAÇÃO
+    // ===============================================
+    {
+        path: "/admin",
+        element: <Login />,
+    },
+    {
+        element: <ProtectedRoute />,
+        children: [
+            {
+                path: "/admin/dashboard",
+                element: <Dashboard />,
+            },
+            {
+                path: "/admin/dashboard/produtos",
+                element: <ViewItens />,
+            },
+            {
+                path: "/admin/dashboard/produtos/novo",
+                element: <CreateProduct />,
+            },
+            {
+                path: "/admin/dashboard/categorias",
+                element: <CategoriesManager />,
+            },
+            {
+                path: "/admin/dashboard/agendamentos",
+                element: <AppointmentsManager />,
+            },
+            // NOVO: Rota para gerenciar clientes
+            {
+                path: "/admin/dashboard/clientes",
+                element: <ClientsManager />,
+            },
+            {
+                path: "/admin/dashboard/configuracoes",
+                element: <AdminSettings />,
+            },
+        ]
     }
 ]);
 

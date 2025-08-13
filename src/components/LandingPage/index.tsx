@@ -1,21 +1,18 @@
-import React, { useState, useEffect, useRef, FormEvent } from 'react';
+import React, { useState, useEffect, useMemo, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { Gem, User, Menu, X, Sun, Moon, Search, List, Instagram, Facebook, Twitter, LogOut, ChevronLeft, ChevronRight, Heart, Calendar } from 'lucide-react';
-import { UrlProducts, UrlCategories } from '../admin/utils/scripts/url'; 
-import { API_BASE_URL } from '../admin/utils/scripts/url';
-// --- CONFIGURAÇÕES E TIPOS ---
+import { UrlProducts, UrlCategories, UrlUser, API_BASE_URL } from '../admin/utils/scripts/url/index';
 
+// --- TIPOS E INTERFACES ---
 interface Category {
     id: number;
     name: string;
 }
-
 interface TimeSlot {
     start: string;
     end: string;
 }
-
 interface Availability {
     monday: TimeSlot[];
     tuesday: TimeSlot[];
@@ -25,7 +22,6 @@ interface Availability {
     saturday: TimeSlot[];
     sunday: TimeSlot[];
 }
-
 interface Product {
     id: number;
     title: string;
@@ -37,7 +33,6 @@ interface Product {
     availability: Availability | null;
     savedByUsers?: { userId: string }[];
 }
-
 interface CurrentUser {
     id: string;
     name: string | null;
@@ -45,6 +40,17 @@ interface CurrentUser {
     image: string | null;
     role: 'USER' | 'ADMIN';
 }
+interface Appointment {
+    id: number;
+    appointmentDate: string;
+    status: 'CONFIRMED' | 'COMPLETED' | 'CANCELED';
+    post: {
+        id: number;
+        title: string;
+        image: string;
+    };
+}
+
 
 // --- HELPERS DE COOKIE ---
 const setCookie = (name: string, value: string, days: number) => {
@@ -67,7 +73,6 @@ const getCookie = (name: string): string | null => {
     }
     return null;
 };
-
 
 // --- COMPONENTES AUXILIARES ---
 
@@ -115,18 +120,27 @@ const ProductCard: React.FC<{ product: Product; user: CurrentUser | null; onBook
     );
 };
 
-const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null; isOpen: boolean; onClose: () => void }> = ({ product, user, isOpen, onClose }) => {
+const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null; isOpen: boolean; onClose: () => void; existingAppointments: Appointment[] }> = ({ product, user, isOpen, onClose, existingAppointments }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [selectedTime, setSelectedTime] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setSelectedDate(null);
         setSelectedTime(null);
     }, [product]);
-
-    if (!isOpen || !product) return null;
+    
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [onClose]);
 
     const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -135,39 +149,32 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
     const startingDay = firstDayOfMonth.getDay();
 
-    const availableDays = Object.entries(product.availability || {})
-        .filter(([_, slots]) => slots.length > 0)
-        .map(([day]) => {
-            const dayMap: { [key: string]: number } = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
-            return dayMap[day];
-        });
+    const availableDaysOfWeek = useMemo(() => {
+        if (!product?.availability) return [];
+        const dayMap: { [key: string]: number } = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+        return Object.entries(product.availability)
+            .filter(([_, slots]) => Array.isArray(slots) && slots.length > 0)
+            .map(([day]) => dayMap[day as keyof typeof dayMap]);
+    }, [product?.availability]);
 
-    const handleDateClick = (day: number) => {
-        const newSelectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-        if (newSelectedDate < new Date(new Date().toDateString())) return;
-        if (!availableDays.includes(newSelectedDate.getDay())) return;
-        setSelectedDate(newSelectedDate);
-        setSelectedTime(null);
-    };
-    
-    const generateTimeSlots = (date: Date): string[] => {
-        if (!date || !product?.availability) return [];
-        const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()] as keyof Availability;
-        const slots = product.availability[dayKey];
+    const timeSlots = useMemo(() => {
+        if (!selectedDate || !product?.availability) return [];
+        const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()] as keyof Availability;
+        const slots = (product.availability as any)[dayKey];
         if (!slots) return [];
 
         const allTimes: string[] = [];
         const now = new Date();
-        const isToday = date.toDateString() === now.toDateString();
+        const isToday = selectedDate.toDateString() === now.toDateString();
 
-        slots.forEach(slot => {
+        slots.forEach((slot: {start: string, end: string}) => {
             let [startHour, startMinute] = slot.start.split(':').map(Number);
             let [endHour, endMinute] = slot.end.split(':').map(Number);
 
-            let currentTime = new Date(date);
+            let currentTime = new Date(selectedDate);
             currentTime.setHours(startHour, startMinute, 0, 0);
 
-            let endTime = new Date(date);
+            let endTime = new Date(selectedDate);
             endTime.setHours(endHour, endMinute, 0, 0);
 
             while (currentTime < endTime) {
@@ -178,62 +185,90 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
             }
         });
         return allTimes;
-    };
-    
-    const timeSlots = selectedDate ? generateTimeSlots(selectedDate) : [];
+    }, [selectedDate, product?.availability]);
 
-    const handleConfirmBooking = async (e: FormEvent) => {
+    const bookedSlots = useMemo(() => {
+        if (!selectedDate) return new Set<string>();
+        const slots = new Set<string>();
+        const formattedSelectedDate = selectedDate.toLocaleDateString('pt-BR');
+        
+        existingAppointments.forEach(app => {
+            if (app.status === 'CONFIRMED') {
+                const appDate = new Date(app.appointmentDate);
+                const formattedAppDate = appDate.toLocaleDateString('pt-BR');
+                if (formattedAppDate === formattedSelectedDate) {
+                    const formattedTime = appDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    slots.add(formattedTime);
+                }
+            }
+        });
+        return slots;
+    }, [existingAppointments, selectedDate]);
+    
+    // CORREÇÃO: A verificação agora acontece depois dos hooks
+    if (!isOpen || !product) return null;
+
+    const handleDateClick = (day: number) => {
+        const newSelectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+        if (newSelectedDate < new Date(new Date().toDateString())) return;
+        if (!availableDaysOfWeek.includes(newSelectedDate.getDay())) return;
+        setSelectedDate(newSelectedDate);
+        setSelectedTime(null);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedDate || !selectedTime || !user) {
-            Swal.fire('Atenção', 'Selecione um dia e horário e certifique-se que está logado.', 'warning');
+        if (!selectedDate || !selectedTime) {
+            Swal.fire('Atenção', 'Selecione um dia e horário.', 'warning');
             return;
         }
-
-        setIsSubmitting(true);
+        setIsLoading(true);
         const [hour, minute] = selectedTime.split(':').map(Number);
         const finalBookingDate = new Date(selectedDate);
         finalBookingDate.setHours(hour, minute);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/appointments/create`, {
+            const res = await fetch(UrlUser.createAppointment(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.id,
-                    postId: product.id,
-                    appointmentDate: finalBookingDate.toISOString(),
-                }),
                 credentials: 'include',
+                body: JSON.stringify({ postId: product.id, appointmentDate: finalBookingDate.toISOString() }),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Falha ao confirmar agendamento.');
-            }
+            if (res.status === 409) throw new Error("Este horário já não se encontra disponível.");
+            if (!res.ok) throw new Error("Não foi possível realizar o agendamento.");
 
-            Swal.fire('Sucesso!', `Agendado para ${selectedDate.toLocaleDateString()} às ${selectedTime}.`, 'success');
+            Swal.fire('Agendado!', 'O seu horário foi confirmado com sucesso.', 'success');
             onClose();
         } catch (error: any) {
-            Swal.fire('Erro', error.message, 'error');
+            Swal.fire('Oops!', error.message, 'error');
         } finally {
-            setIsSubmitting(false);
+            setIsLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <form onSubmit={handleConfirmBooking} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg transform transition-all" onClick={(e) => e.stopPropagation()}>
-                <div className="p-6">
-                    <div className="text-center mb-4">
-                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Agendar: {product.title}</h3>
-                    </div>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <form 
+                ref={modalRef}
+                onSubmit={handleSubmit} 
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]" 
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="p-4 border-b shrink-0 flex justify-between items-center">
+                    <h3 className="text-xl font-semibold text-gray-800">Agendar: {product.title}</h3>
+                    <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
+                        <X size={20} className="text-gray-500" />
+                    </button>
+                </div>
+
+                <div className="p-6 flex-1 overflow-y-auto">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Calendário */}
                         <div>
                             <div className="flex items-center justify-between mb-2">
-                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronLeft size={20} /></button>
+                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="p-2 rounded-full hover:bg-gray-100"><ChevronLeft size={20} /></button>
                                 <h4 className="font-semibold text-center">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h4>
-                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronRight size={20} /></button>
+                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="p-2 rounded-full hover:bg-gray-100"><ChevronRight size={20} /></button>
                             </div>
                             <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500">
                                 {daysOfWeek.map(day => <div key={day} className="font-semibold">{day}</div>)}
@@ -244,7 +279,7 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                                     const dayNumber = day + 1;
                                     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNumber);
                                     const isPast = date < new Date(new Date().toDateString());
-                                    const isAvailable = availableDays.includes(date.getDay()) && !isPast;
+                                    const isAvailable = availableDaysOfWeek.includes(date.getDay()) && !isPast;
                                     const isSelected = selectedDate?.toDateString() === date.toDateString();
                                     return (
                                         <button
@@ -254,36 +289,49 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                                             disabled={!isAvailable}
                                             className={`w-10 h-10 rounded-full text-sm transition-colors ${
                                                 isSelected ? 'bg-blue-600 text-white' :
-                                                isAvailable ? 'hover:bg-blue-100 dark:hover:bg-blue-900' : 'text-gray-400 dark:text-gray-600'
+                                                isAvailable ? 'hover:bg-blue-100' : 'text-gray-400'
                                             }`}
                                         >{dayNumber}</button>
                                     );
                                 })}
                             </div>
                         </div>
-                        {/* Horários */}
-                        <div className="border-l border-gray-200 dark:border-gray-700 pl-6">
+                        <div className="md:border-l md:border-gray-200 md:pl-6">
                             <h4 className="font-semibold mb-2">Horários Disponíveis</h4>
                             {selectedDate ? (
-                                <div className="max-h-48 overflow-y-auto space-y-2">
-                                    {timeSlots.length > 0 ? timeSlots.map(time => (
-                                        <button
-                                            type="button"
-                                            key={time}
-                                            onClick={() => setSelectedTime(time)}
-                                            className={`w-full text-center p-2 rounded-lg border text-sm transition-colors ${
-                                                selectedTime === time ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                            }`}
-                                        >{time}</button>
-                                    )) : <p className="text-sm text-gray-500">Nenhum horário disponível.</p>}
+                                <div className="space-y-2">
+                                    {timeSlots.length > 0 ? timeSlots.map(time => {
+                                        const isBooked = bookedSlots.has(time);
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={time}
+                                                onClick={() => setSelectedTime(time)}
+                                                disabled={isBooked}
+                                                className={`w-full text-center p-2 rounded-lg border text-sm transition-colors ${
+                                                    selectedTime === time ? 'bg-blue-600 text-white border-blue-600' : 
+                                                    isBooked ? 'bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed' :
+                                                    'border-gray-300 hover:bg-gray-100'
+                                                }`}
+                                            >{isBooked ? 'Agendado' : time}</button>
+                                        )
+                                    }) : <p className="text-sm text-gray-500">Nenhum horário disponível.</p>}
                                 </div>
                             ) : <p className="text-sm text-gray-500">Selecione um dia no calendário.</p>}
                         </div>
                     </div>
                 </div>
-                <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-                    <button type="submit" disabled={isSubmitting || !selectedTime} className="w-full md:w-auto bg-blue-600 text-white font-semibold py-3 px-6 rounded-full hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">
-                        {isSubmitting ? 'A confirmar...' : 'Confirmar Agendamento'}
+
+                <div className="p-4 border-t bg-gray-50 shrink-0 flex justify-end gap-3">
+                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm font-semibold">
+                        Fechar
+                    </button>
+                    <button 
+                        type="submit" 
+                        disabled={isLoading || !selectedTime} 
+                        className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:bg-blue-400 disabled:cursor-not-allowed"
+                    >
+                        {isLoading ? 'A confirmar...' : 'Confirmar Agendamento'}
                     </button>
                 </div>
             </form>
@@ -308,7 +356,7 @@ const MobileDrawer: React.FC<{ isOpen: boolean; onClose: () => void; user: Curre
                             <LogOut className="w-4 h-4" /><span>Logout</span>
                         </button>
                     ) : (
-                        <a href="/auth/google" className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+                        <a href={`${API_BASE_URL}/auth/google`} className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
                             <User className="w-4 h-4" /><span>Login com Google</span>
                         </a>
                     )}
@@ -335,8 +383,9 @@ const UserProfile: React.FC<{ user: CurrentUser; onLogout: () => void }> = ({ us
 
     return (
         <div className="relative" ref={ref}>
-            <button onClick={() => setIsOpen(!isOpen)} className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500">
-                <img src={user.image || `https://placehold.co/100x100/E2E8F0/4A5568?text=${user.name?.[0] || 'U'}`} alt="Avatar" className="w-full h-full object-cover" />
+            <button onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2">
+                <img src={user.image || `https://ui-avatars.com/api/?name=${user.name || 'U'}&background=random`} alt="Avatar" className="w-9 h-9 rounded-full object-cover" />
+                <span className="hidden sm:inline font-semibold text-sm text-gray-700 dark:text-gray-300">{user.name}</span>
             </button>
             {isOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-lg z-50 border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -418,7 +467,7 @@ export default function LandingPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [bookingProduct, setBookingProduct] = useState<Product | null>(null);
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -442,6 +491,12 @@ export default function LandingPage() {
                 }
                 const userData = await res.json();
                 setCurrentUser(userData);
+
+                const appointmentsRes = await fetch(UrlUser.getAppointments(), { credentials: 'include' });
+                if(appointmentsRes.ok) {
+                    const appointmentsData = await appointmentsRes.json();
+                    setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
+                }
                 
                 if (isNewLogin) {
                     Swal.fire({
@@ -546,9 +601,10 @@ export default function LandingPage() {
             Swal.fire('Login Necessário', 'Você precisa de fazer login para salvar um item.', 'info');
             return;
         }
-
+    
+        const originalProducts = [...products];
         const isCurrentlySaved = products.find(p => p.id === productId)?.savedByUsers?.some(s => s.userId === currentUser.id);
-
+    
         const updatedProducts = products.map(p => {
             if (p.id === productId) {
                 const savedByUsers = p.savedByUsers || [];
@@ -561,23 +617,26 @@ export default function LandingPage() {
             return p;
         });
         setProducts(updatedProducts);
-
+    
         try {
-            // await fetch(`${API_BASE_URL}/api/posts/${productId}/save`, {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ userId: currentUser.id }),
-            // });
+            const res = await fetch(UrlUser.toggleSavePost(productId), {
+                method: 'POST',
+                credentials: 'include',
+            });
+    
+            if (!res.ok) {
+                throw new Error('Falha ao salvar o item.');
+            }
         } catch (error) {
-            setProducts(products);
-            Swal.fire('Erro', 'Não foi possível salvar o item.', 'error');
+            setProducts(originalProducts);
+            Swal.fire('Erro', 'Não foi possível salvar o item. Tente novamente.', 'error');
         }
     };
 
     const handleLogout = async () => {
         await fetch(`${API_BASE_URL}/auth/logout`, { 
             method: 'POST',
-            credentials: 'include' // Envia o cookie de sessão para o logout
+            credentials: 'include'
         });
         setCurrentUser(null);
         navigate('/');
@@ -678,7 +737,7 @@ export default function LandingPage() {
                 </section>
             </main>
 
-            <BookingModal product={bookingProduct} user={currentUser} isOpen={!!bookingProduct} onClose={() => setBookingProduct(null)} />
+            <BookingModal product={bookingProduct} user={currentUser} isOpen={!!bookingProduct} onClose={() => setBookingProduct(null)} existingAppointments={appointments} />
             <Footer />
         </div>
     );
