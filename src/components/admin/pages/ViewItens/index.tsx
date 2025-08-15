@@ -464,10 +464,10 @@ function EditModal({ isOpen, onClose, onSave, isSaving, item, categories }: Edit
                              <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
                                 <div className="p-6 border-b border-gray-200"><h2 className="text-lg font-medium text-gray-900 flex items-center gap-2"><Clock size={18}/> Disponibilidade</h2></div>
                                 <div className="p-6">
-                                    <AvailabilityManager 
+                                    {/*<AvailabilityManager 
                                         availability={localItem.availability || initialAvailability} 
                                         setAvailability={(newAvailability) => setLocalItem(prev => ({...prev, availability: newAvailability}))} 
-                                    />
+                                    />*/}
                                 </div>
                             </div>
                         </div>
