@@ -1,6 +1,6 @@
 // --- CONFIGURAÇÃO BASE ---
 const PORT = 1000;
-export const API_BASE_URL = import.meta.env.VITE_API_URL || `http://localhost:${PORT}`;
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://localhost:${PORT}`;
 
 // URL base para o painel de administração
 const ADMIN_BASE_URL = `${API_BASE_URL}/admin`;

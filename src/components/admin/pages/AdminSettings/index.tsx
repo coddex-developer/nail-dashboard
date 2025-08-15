@@ -1,8 +1,6 @@
 import React, { useEffect, useState, FormEvent } from "react";
 import Swal from "sweetalert2";
 import { User, Lock, Phone, Link as LinkIcon, PlusCircle, Edit2, Trash2, Share2, AtSign } from "lucide-react";
-// Assumindo que você criará um arquivo de URLs para os contatos
-import { UrlContacts } from "../../utils/scripts/url/index";
 import Navbar from "../../utils/Navbar";
 
 // --- DEFINIÇÕES DE TIPO (TypeScript) ---
