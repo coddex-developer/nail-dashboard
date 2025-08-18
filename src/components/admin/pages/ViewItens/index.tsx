@@ -365,7 +365,7 @@ function ItemCard({ item, categoryName, onEdit, onDelete }: ItemProps) {
                 </div>
                 <details className="relative">
                     <summary className="list-none cursor-pointer p-2 rounded-full hover:bg-gray-100"><MoreVertical size={20} className="text-gray-600" /></summary>
-                    <div className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-lg z-10 border border-gray-100">
+                    <div className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-lg z-100 border border-gray-100">
                         <button onClick={() => onEdit(item)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Edit2 size={14} /> Editar</button>
                         <button onClick={() => onDelete(item)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} /> Excluir</button>
                     </div>
