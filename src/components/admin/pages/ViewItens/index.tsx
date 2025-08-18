@@ -419,7 +419,7 @@ function EditModal({ isOpen, onClose, onSave, isSaving, item, categories }: Edit
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-150 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
             <div className="w-full max-w-4xl bg-gray-100 rounded-2xl shadow-xl transform transition-all" onClick={e => e.stopPropagation()}>
                  <header className="flex items-center justify-between p-4 sm:p-6 border-b bg-white rounded-t-2xl">
                     <h2 className="text-lg font-semibold text-gray-800">Editar Produto</h2>
