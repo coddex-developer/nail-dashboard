@@ -319,7 +319,7 @@ interface ItemProps {
 }
 
 function ItemTableRow({ item, categoryName, onEdit, onDelete }: ItemProps) {
-    const imageUrl = item.image ? `${API_BASE_URL}/${item.image}` : null;
+    const imageUrl = `${API_BASE_URL}/${item.image}`;
     return (
         <tr className="hover:bg-gray-50">
             <td className="p-4">
