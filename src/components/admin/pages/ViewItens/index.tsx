@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { AvailabilityManager } from "../../utils/AvailabilityManager";
 
 // --- TIPOS E CONFIGURAÇÕES ---
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:1000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface Category {
     id: number;
