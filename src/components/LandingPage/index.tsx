@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { User, Menu, X, Search, List, Instagram, Facebook, Twitter, LogOut, ChevronLeft, ChevronRight, Heart, Calendar } from 'lucide-react';
+import { User, Menu, X, Search, List, Instagram, Facebook, Twitter, LogOut, ChevronLeft, ChevronRight, Heart, Calendar, ChevronDown, Home, Sparkles, HelpCircle } from 'lucide-react';
 import { UrlProducts, UrlCategories, UrlUser, API_BASE_URL } from '../admin/utils/scripts/url/index';
 
 // --- TIPOS E INTERFACES ---
@@ -76,7 +76,52 @@ const getCookie = (name: string): string | null => {
 
 // --- COMPONENTES AUXILIARES ---
 
-const ProductCard: React.FC<{ product: Product; user: CurrentUser | null; onBook: () => void; onSaveToggle: (productId: number) => void; }> = ({ product, user, onBook, onSaveToggle }) => {
+const ScrollProgressBar: React.FC = () => {
+    const [width, setWidth] = useState(0);
+
+    const handleScroll = () => {
+        const totalScroll = document.documentElement.scrollTop;
+        const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        if (windowHeight > 0) {
+            const scroll = (totalScroll / windowHeight) * 100;
+            setWidth(scroll);
+        } else {
+            setWidth(0);
+        }
+    };
+
+    useEffect(() => {
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    return (
+        <div className="fixed top-0 left-0 w-full h-1 z-[100]">
+            <div
+                className="h-full bg-pink-500"
+                style={{ width: `${width}%`, transition: 'width 0.1s ease-out' }}
+            ></div>
+        </div>
+    );
+};
+
+const SkeletonCard: React.FC = () => (
+    <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden flex flex-col">
+        <div className="w-full h-48 bg-gray-200 animate-shimmer"></div>
+        <div className="p-6 flex flex-col flex-grow">
+            <div className="w-3/4 h-6 mb-4 bg-gray-200 rounded animate-shimmer"></div>
+            <div className="w-full h-4 mb-2 bg-gray-200 rounded animate-shimmer"></div>
+            <div className="w-5/6 h-4 mb-4 bg-gray-200 rounded animate-shimmer"></div>
+            <div className="flex justify-between items-center mt-auto">
+                <div className="w-1/3 h-8 bg-gray-200 rounded animate-shimmer"></div>
+                <div className="w-1/4 h-10 bg-gray-200 rounded-full animate-shimmer"></div>
+            </div>
+        </div>
+    </div>
+);
+
+
+const ProductCard: React.FC<{ product: Product; user: CurrentUser | null; onBook: () => void; onSaveToggle: (productId: number) => void; style: React.CSSProperties }> = ({ product, user, onBook, onSaveToggle, style }) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const isSaved = user ? product.savedByUsers?.some(save => save.userId === user.id) : false;
 
@@ -97,12 +142,12 @@ const ProductCard: React.FC<{ product: Product; user: CurrentUser | null; onBook
     }, []);
 
     return (
-        <div ref={cardRef} className="card-interactive bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden flex flex-col fade-in-up transition-transform duration-300 hover:-translate-y-1 relative">
+        <div ref={cardRef} style={style} className="card-interactive bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden flex flex-col animate-on-scroll transition-transform duration-300 hover:-translate-y-2 relative">
             <div className="w-full h-48 overflow-hidden relative">
-                <img src={`${API_BASE_URL}/${product.image}`} alt={product.title} className="w-full h-full object-cover transition-transform duration-300 hover:scale-105" />
+                <img src={`${API_BASE_URL}/${product.image}`} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
                 {user && (
-                    <button onClick={() => onSaveToggle(product.id)} className="absolute top-3 right-3 p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors">
-                        <Heart size={20} className={isSaved ? 'fill-red-500 text-red-500' : 'fill-transparent'} />
+                    <button onClick={() => onSaveToggle(product.id)} className="absolute top-3 right-3 p-2 rounded-full bg-white/30 backdrop-blur-sm text-white hover:bg-white/50 transition-all duration-300 transform hover:scale-110">
+                        <Heart size={20} className={isSaved ? 'fill-red-500 text-red-500' : 'fill-transparent text-white'} />
                     </button>
                 )}
             </div>
@@ -111,7 +156,7 @@ const ProductCard: React.FC<{ product: Product; user: CurrentUser | null; onBook
                 <p className="text-gray-600 mb-4 flex-grow text-sm">{product.content.substring(0, 100)}...</p>
                 <div className="flex justify-between items-center mt-auto">
                     <span className="text-2xl font-bold text-pink-600">R${parseFloat(String(product.price)).toFixed(2)}</span>
-                    <button onClick={onBook} className="bg-pink-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-pink-700 transition-colors z-10">
+                    <button onClick={onBook} className="bg-pink-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-pink-700 transition-all duration-300 transform hover:scale-105 z-10">
                         Agendar
                     </button>
                 </div>
@@ -247,16 +292,16 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
             <form 
                 ref={modalRef}
                 onSubmit={handleSubmit} 
-                className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]" 
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh] animate-slide-in-up" 
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="p-4 border-b shrink-0 flex justify-between items-center">
                     <h3 className="text-xl font-semibold text-gray-800">Reserve seu momento: {product.title}</h3>
-                    <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
+                    <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
                         <X size={20} className="text-gray-500" />
                     </button>
                 </div>
@@ -265,9 +310,9 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <div className="flex items-center justify-between mb-2">
-                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="p-2 rounded-full hover:bg-pink-100"><ChevronLeft size={20} /></button>
+                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="p-2 rounded-full hover:bg-pink-100 transition-colors"><ChevronLeft size={20} /></button>
                                 <h4 className="font-semibold text-center text-pink-800">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h4>
-                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="p-2 rounded-full hover:bg-pink-100"><ChevronRight size={20} /></button>
+                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="p-2 rounded-full hover:bg-pink-100 transition-colors"><ChevronRight size={20} /></button>
                             </div>
                             <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500">
                                 {daysOfWeek.map(day => <div key={day} className="font-semibold">{day}</div>)}
@@ -286,8 +331,8 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                                             key={dayNumber}
                                             onClick={() => handleDateClick(dayNumber)}
                                             disabled={!isAvailable}
-                                            className={`w-10 h-10 rounded-full text-sm transition-colors ${
-                                                isSelected ? 'bg-pink-600 text-white' :
+                                            className={`w-10 h-10 rounded-full text-sm transition-all duration-200 transform hover:scale-110 ${
+                                                isSelected ? 'bg-pink-600 text-white scale-110' :
                                                 isAvailable ? 'hover:bg-pink-100' : 'text-gray-400'
                                             }`}
                                         >{dayNumber}</button>
@@ -322,13 +367,13 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                 </div>
 
                 <div className="p-4 border-t bg-gray-50 shrink-0 flex justify-end gap-3">
-                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm font-semibold">
+                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm font-semibold transition-colors">
                         Fechar
                     </button>
                     <button 
                         type="submit" 
                         disabled={isLoading || !selectedTime} 
-                        className="px-6 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold disabled:bg-pink-300 disabled:cursor-not-allowed"
+                        className="px-6 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold disabled:bg-pink-300 disabled:cursor-not-allowed transition-colors"
                     >
                         {isLoading ? 'Confirmando...' : 'Confirmar Agendamento'}
                     </button>
@@ -343,19 +388,26 @@ const MobileDrawer: React.FC<{ isOpen: boolean; onClose: () => void; user: Curre
         <div className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'bg-black/40' : 'bg-transparent pointer-events-none'}`} onClick={onClose}>
             <div className={`fixed top-0 right-0 h-full w-4/5 max-w-xs bg-white shadow-xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`} onClick={e => e.stopPropagation()}>
                 <div className="p-4 flex justify-end">
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-pink-100">
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-pink-100 transition-colors">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
-                <nav className="flex flex-col p-4 space-y-4">
-                    <a href="#" className="text-lg font-medium text-gray-800 hover:text-pink-600">Início</a>
-                    <a href="#produtos" className="text-lg font-medium text-gray-800 hover:text-pink-600">Serviços</a>
+                <nav className="flex flex-col p-4 space-y-2">
+                    <a href="#home" onClick={onClose} className="flex items-center gap-4 p-2 text-lg font-medium text-gray-800 hover:text-pink-600 transition-colors rounded-lg hover:bg-pink-50">
+                        <Home size={20} /> <span>Início</span>
+                    </a>
+                    <a href="#produtos" onClick={onClose} className="flex items-center gap-4 p-2 text-lg font-medium text-gray-800 hover:text-pink-600 transition-colors rounded-lg hover:bg-pink-50">
+                        <Sparkles size={20} /> <span>Serviços</span>
+                    </a>
+                    <a href="#faq" onClick={onClose} className="flex items-center gap-4 p-2 text-lg font-medium text-gray-800 hover:text-pink-600 transition-colors rounded-lg hover:bg-pink-50">
+                        <HelpCircle size={20} /> <span>FAQ</span>
+                    </a>
                     {user ? (
-                        <button onClick={onLogout} className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-500 text-white text-sm font-semibold hover:bg-red-600">
+                        <button onClick={onLogout} className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">
                             <LogOut className="w-4 h-4" /><span>Sair</span>
                         </button>
                     ) : (
-                        <a href={`${API_BASE_URL}/auth/google`} className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-pink-600 text-white text-sm font-semibold hover:bg-pink-700">
+                        <a href={`${API_BASE_URL}/auth/google`} className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-pink-600 text-white text-sm font-semibold hover:bg-pink-700 transition-colors">
                             <User className="w-4 h-4" /><span>Login com Google</span>
                         </a>
                     )}
@@ -382,21 +434,21 @@ const UserProfile: React.FC<{ user: CurrentUser; onLogout: () => void }> = ({ us
 
     return (
         <div className="relative" ref={ref}>
-            <button onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2">
+            <button onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 transition-transform transform hover:scale-105">
                 <img src={user.image || `https://ui-avatars.com/api/?name=${user.name || 'U'}&background=ec4899&color=fff`} alt="Avatar" className="w-9 h-9 rounded-full object-cover" />
                 <span className="hidden sm:inline font-semibold text-sm text-gray-700">{user.name}</span>
             </button>
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg z-50 border border-pink-100 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg z-50 border border-pink-100 overflow-hidden animate-fade-in-fast">
                     <div className="p-4 border-b border-pink-100">
                         <p className="font-semibold text-gray-800 truncate">{user.name}</p>
                         <p className="text-sm text-gray-500 truncate">{user.email}</p>
                     </div>
                     <div className="p-2">
-                        <button onClick={() => navigate('/meus-agendamentos')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-pink-50 rounded-lg">
+                        <button onClick={() => navigate('/meus-agendamentos')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-pink-50 rounded-lg transition-colors">
                             <Calendar size={16} /> Meus Agendamentos
                         </button>
-                        <button onClick={onLogout} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg">
+                        <button onClick={onLogout} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                             <LogOut size={16} /> Sair
                         </button>
                     </div>
@@ -405,6 +457,62 @@ const UserProfile: React.FC<{ user: CurrentUser; onLogout: () => void }> = ({ us
         </div>
     );
 };
+
+const FaqItem: React.FC<{ question: string; answer: string; style: React.CSSProperties }> = ({ question, answer, style }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+        <div className="py-5 border-b border-pink-200 animate-on-scroll" style={style}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex justify-between items-center text-left gap-4"
+                aria-expanded={isOpen}
+            >
+                <h4 className="text-lg font-medium text-pink-800">{question}</h4>
+                <ChevronDown className={`w-5 h-5 text-pink-500 flex-shrink-0 transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <div className={`grid transition-all duration-500 ease-in-out ${isOpen ? 'grid-rows-[1fr] mt-4' : 'grid-rows-[0fr]'}`}>
+                 <div className="overflow-hidden">
+                    <p className="text-gray-600 pr-6">{answer}</p>
+                 </div>
+            </div>
+        </div>
+    );
+};
+
+const FaqSection: React.FC = () => {
+    const faqData = [
+        {
+            question: "Preciso agendar com antecedência?",
+            answer: "Sim, recomendamos agendar com pelo menos 2-3 dias de antecedência para garantir seu horário preferido, especialmente para os fins de semana. No entanto, sempre faremos o possível para acomodar agendamentos de última hora, sujeito à disponibilidade."
+        },
+        {
+            question: "Quais formas de pagamento vocês aceitam?",
+            answer: "Aceitamos dinheiro, cartões de débito e crédito das principais bandeiras (Visa, Mastercard, Elo) e também pagamentos via Pix para sua maior conveniência."
+        },
+        {
+            question: "Qual a durabilidade da esmaltação em gel?",
+            answer: "A esmaltação em gel é famosa por sua longa durabilidade. Em média, ela pode durar de 15 a 21 dias sem lascar e com brilho intenso, dependendo dos cuidados diários e do crescimento da sua unha."
+        },
+        {
+            question: "Vocês utilizam materiais descartáveis e esterilizados?",
+            answer: "Absolutamente! Sua segurança é nossa prioridade máxima. Todos os nossos materiais perfurocortantes, como alicates e espátulas, são esterilizados em autoclave. Itens como lixas e palitos são 100% descartáveis."
+        },
+    ];
+
+    return (
+        <section id="faq" className="py-16">
+            <h2 className="text-3xl text-pink-700 font-bold text-center mb-4 animate-on-scroll">Perguntas Frequentes</h2>
+            <p className="text-center text-pink-600 mb-12 max-w-2xl mx-auto animate-on-scroll" style={{ transitionDelay: '150ms' }}>
+                Tire suas dúvidas mais comuns sobre nossos serviços e agendamentos.
+            </p>
+            <div className="max-w-3xl mx-auto bg-white/50 rounded-2xl p-4 md:p-8 shadow-sm border border-pink-100">
+                {faqData.map((item, index) => (
+                    <FaqItem key={index} question={item.question} answer={item.answer} style={{ transitionDelay: `${200 + index * 100}ms` }} />
+                ))}
+            </div>
+        </section>
+    );
+}
 
 const Footer: React.FC = () => {
     return (
@@ -420,23 +528,24 @@ const Footer: React.FC = () => {
                     <div>
                         <h3 className="text-sm font-semibold text-pink-900 tracking-wider uppercase">Navegação</h3>
                         <ul className="mt-4 space-y-2">
-                            <li><a href="#" className="text-base text-gray-500 hover:text-pink-600">Início</a></li>
-                            <li><a href="#produtos" className="text-base text-gray-500 hover:text-pink-600">Serviços</a></li>
+                            <li><a href="#home" className="text-base text-gray-500 hover:text-pink-600 transition-colors">Início</a></li>
+                            <li><a href="#produtos" className="text-base text-gray-500 hover:text-pink-600 transition-colors">Serviços</a></li>
+                            <li><a href="#faq" className="text-base text-gray-500 hover:text-pink-600 transition-colors">FAQ</a></li>
                         </ul>
                     </div>
                     <div>
                         <h3 className="text-sm font-semibold text-pink-900 tracking-wider uppercase">Legal</h3>
                         <ul className="mt-4 space-y-2">
-                            <li><a href="#" className="text-base text-gray-500 hover:text-pink-600">Política de Privacidade</a></li>
-                            <li><a href="#" className="text-base text-gray-500 hover:text-pink-600">Termos de Uso</a></li>
+                            <li><a href="#" className="text-base text-gray-500 hover:text-pink-600 transition-colors">Política de Privacidade</a></li>
+                            <li><a href="#" className="text-base text-gray-500 hover:text-pink-600 transition-colors">Termos de Uso</a></li>
                         </ul>
                     </div>
                      <div>
                         <h3 className="text-sm font-semibold text-pink-900 tracking-wider uppercase">Siga-nos</h3>
                         <div className="flex mt-4 space-x-4">
-                            <a href="#" className="text-gray-400 hover:text-pink-600"><Instagram /></a>
-                            <a href="#" className="text-gray-400 hover:text-pink-600"><Facebook /></a>
-                            <a href="#" className="text-gray-400 hover:text-pink-600"><Twitter /></a>
+                            <a href="#" className="text-gray-400 hover:text-pink-600 transition-transform transform hover:scale-125"><Instagram /></a>
+                            <a href="#" className="text-gray-400 hover:text-pink-600 transition-transform transform hover:scale-125"><Facebook /></a>
+                            <a href="#" className="text-gray-400 hover:text-pink-600 transition-transform transform hover:scale-125"><Twitter /></a>
                         </div>
                     </div>
                 </div>
@@ -451,6 +560,7 @@ const Footer: React.FC = () => {
 // --- COMPONENTE PRINCIPAL ---
 
 export default function LandingPage() {
+    const [isLoading, setIsLoading] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -508,6 +618,7 @@ export default function LandingPage() {
         }
 
         const fetchData = async () => {
+            setIsLoading(true);
             try {
                 const [productsRes, categoriesRes] = await Promise.all([
                     fetch(UrlProducts.allProducts),
@@ -525,6 +636,8 @@ export default function LandingPage() {
                 setCategories(Array.isArray(categoriesData) ? categoriesData : []);
             } catch (error) {
                 console.error("Falha ao buscar dados:", error);
+            } finally {
+                setTimeout(() => setIsLoading(false), 500);
             }
         };
 
@@ -546,17 +659,17 @@ export default function LandingPage() {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
+                    entry.target.classList.add('in-view');
                     observer.unobserve(entry.target);
                 }
             });
         }, { threshold: 0.1 });
 
-        const elements = document.querySelectorAll('.fade-in-up');
+        const elements = document.querySelectorAll('.animate-on-scroll');
         elements.forEach(el => observer.observe(el));
 
         return () => elements.forEach(el => observer.unobserve(el));
-    }, [filteredProducts]);
+    }, [filteredProducts, isLoading]);
     
     const handleBookClick = (product: Product) => {
         if (currentUser) {
@@ -625,46 +738,75 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="bg-pink-50 text-gray-800 transition-colors duration-300">
+        <div className="bg-pink-50 text-gray-800">
+            <ScrollProgressBar />
             <style>{`
-                .fade-in-up { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
-                .fade-in-up.visible { opacity: 1; transform: translateY(0); }
+                html {
+                    scroll-behavior: smooth;
+                }
+                @keyframes shimmer {
+                    0% { background-position: -1000px 0; }
+                    100% { background-position: 1000px 0; }
+                }
+                .animate-shimmer {
+                    animation: shimmer 2s infinite linear;
+                    background: linear-gradient(to right, #f0f0f0 8%, #e0e0e0 18%, #f0f0f0 33%);
+                    background-size: 2000px 100%;
+                }
+                @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+                .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+                .animate-fade-in-fast { animation: fade-in 0.3s ease-out forwards; }
+
+                @keyframes slide-in-up { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-slide-in-up { animation: slide-in-up 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+                
+                .animate-on-scroll {
+                    opacity: 0;
+                    transform: translateY(30px);
+                    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+                }
+                .animate-on-scroll.in-view {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
                 .card-interactive::before {
                     content: '';
                     position: absolute;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(236, 72, 153, 0.15), transparent 20%);
+                    left: 0; top: 0;
+                    width: 100%; height: 100%;
+                    background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(236, 72, 153, 0.15), transparent 25%);
                     opacity: 0;
-                    transition: opacity 0.3s;
-                    border-radius: 1rem; /* same as card */
+                    transition: opacity 0.4s;
+                    border-radius: 1rem;
                 }
-                .card-interactive:hover::before {
-                    opacity: 1;
-                }
+                .card-interactive:hover::before { opacity: 1; }
             `}</style>
-            <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-30 border-b border-pink-100 py-2">
+            <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-30 border-b border-pink-100 py-2 transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
                             <img src="/png-logo.png" className='w-29' alt="Logo" />
                         </div>
                         <nav className="hidden md:flex items-center space-x-8">
-                            <a href="#" className="text-sm font-medium text-gray-600 hover:text-pink-600">Início</a>
-                            <a href="#produtos" className="text-sm font-medium text-gray-600 hover:text-pink-600">Serviços</a>
+                            <a href="#home" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-pink-600 transition-colors">
+                                <Home size={16} /> <span>Início</span>
+                            </a>
+                            <a href="#produtos" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-pink-600 transition-colors">
+                                <Sparkles size={16} /> <span>Serviços</span>
+                            </a>
+                            <a href="#faq" className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-pink-600 transition-colors">
+                                <HelpCircle size={16} /> <span>FAQ</span>
+                            </a>
                         </nav>
                         <div className="flex items-center gap-3">
-                            
                             {currentUser ? (
                                 <UserProfile user={currentUser} onLogout={handleLogout} />
                             ) : (
-                                <a href={`${API_BASE_URL}/auth/google`} className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-600 text-white text-sm font-semibold hover:bg-pink-700">
+                                <a href={`${API_BASE_URL}/auth/google`} className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-600 text-white text-sm font-semibold hover:bg-pink-700 transition-all duration-300 transform hover:scale-105">
                                     <User className="w-4 h-4" /><span>Login com Google</span>
                                 </a>
                             )}
-                            <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 rounded-full text-gray-500 hover:bg-pink-100">
+                            <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 rounded-full text-gray-500 hover:bg-pink-100 transition-colors">
                                 <Menu className="w-6 h-6" />
                             </button>
                         </div>
@@ -675,44 +817,58 @@ export default function LandingPage() {
             <MobileDrawer isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} user={currentUser} onLogout={handleLogout} />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <section className="mb-16">
-                    <div className="bg-pink-500 rounded-2xl shadow-lg p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
+                <section id="home" className="mb-16">
+                    <div className="bg-pink-500 rounded-2xl shadow-lg p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 overflow-hidden">
                         <div className="md:w-1/2 text-center md:text-left">
-                            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight fade-in-up">Mãos de fada, unhas de rainha.</h1>
-                            <p className="mt-4 text-lg text-pink-100 fade-in-up" style={{transitionDelay: '200ms'}}>Explore nossos serviços de manicure e pedicure e reserve um tempo para você. Suas mãos merecem esse carinho!</p>
-                            <a href="#produtos" className="mt-8 inline-block bg-white text-pink-600 font-semibold px-8 py-3 rounded-full hover:bg-pink-100 transition-transform hover:scale-105 fade-in-up" style={{transitionDelay: '400ms'}}>Agendar Agora</a>
+                            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight animate-on-scroll" style={{ transitionDelay: '100ms' }}>Mãos de fada, unhas de rainha.</h1>
+                            <p className="mt-4 text-lg text-pink-100 animate-on-scroll" style={{ transitionDelay: '200ms' }}>Explore nossos serviços de manicure e pedicure e reserve um tempo para você. Suas mãos merecem esse carinho!</p>
+                            <a href="#produtos" className="mt-8 inline-block bg-white text-pink-600 font-semibold px-8 py-3 rounded-full hover:bg-pink-100 transition-all duration-300 transform hover:scale-105 animate-on-scroll" style={{ transitionDelay: '300ms' }}>Agendar Agora</a>
                         </div>
-                        <div className="md:w-1/2 fade-in-up" style={{transitionDelay: '600ms'}}>
+                        <div className="md:w-1/2 animate-on-scroll" style={{ transitionDelay: '400ms' }}>
                             <img src="/services/destack-01.jpg" alt="Unhas de manicure bem feitas" className="rounded-2xl w-full h-auto shadow-md" />
                         </div>
                     </div>
                 </section>
 
                 <section id="produtos">
-                    <h2 className="text-3xl text-pink-700 font-bold text-center mb-4">Nossos Tratamentos Especiais</h2>
-                    <p className="text-center text-pink-600 mb-12 max-w-2xl mx-auto">Deixe suas unhas deslumbrantes com nossos tratamentos. Escolha a categoria ou procure pelo seu serviço preferido.</p>
-                    <div className="mb-8 flex flex-col sm:flex-row gap-4">
+                    <h2 className="text-3xl text-pink-700 font-bold text-center mb-4 animate-on-scroll">Nossos Tratamentos Especiais</h2>
+                    <p className="text-center text-pink-600 mb-12 max-w-2xl mx-auto animate-on-scroll" style={{ transitionDelay: '150ms' }}>Deixe suas unhas deslumbrantes com nossos tratamentos. Escolha a categoria ou procure pelo seu serviço preferido.</p>
+                    <div className="mb-8 flex flex-col sm:flex-row gap-4 animate-on-scroll" style={{ transitionDelay: '300ms' }}>
                         <div className="relative flex-grow">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input type="text" placeholder="Buscar serviço..." onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-2.5 border border-pink-200 rounded-full bg-white focus:ring-2 focus:ring-pink-500 focus:outline-none" />
+                            <input type="text" placeholder="Buscar serviço..." onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-2.5 border border-pink-200 rounded-full bg-white focus:ring-2 focus:ring-pink-500 focus:outline-none transition-shadow" />
                         </div>
                         <div className="relative">
                             <List className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <select onChange={(e) => setSelectedCategory(e.target.value)} className="w-full sm:w-56 pl-12 pr-4 py-2.5 border border-pink-200 rounded-full bg-white appearance-none focus:ring-2 focus:ring-pink-500 focus:outline-none">
+                            <select onChange={(e) => setSelectedCategory(e.target.value)} className="w-full sm:w-56 pl-12 pr-4 py-2.5 border border-pink-200 rounded-full bg-white appearance-none focus:ring-2 focus:ring-pink-500 focus:outline-none transition-shadow">
                                 <option value="all">Todas as Categorias</option>
                                 {categories.map(cat => <option key={cat.id} value={String(cat.id)}>{cat.name}</option>)}
                             </select>
                         </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredProducts.map(product => (
-                            <ProductCard key={product.id} product={product} user={currentUser} onBook={() => handleBookClick(product)} onSaveToggle={handleSaveToggle} />
-                        ))}
+                        {isLoading ? (
+                             Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={index} />)
+                        ) : (
+                            filteredProducts.map((product, index) => (
+                                <ProductCard 
+                                    key={product.id} 
+                                    product={product} 
+                                    user={currentUser} 
+                                    onBook={() => handleBookClick(product)} 
+                                    onSaveToggle={handleSaveToggle}
+                                    style={{ transitionDelay: `${index * 100}ms` }}
+                                />
+                            ))
+                        )}
                     </div>
                 </section>
+                
+                <FaqSection />
+
             </main>
 
-            <BookingModal product={bookingProduct} user={currentUser} isOpen={!!bookingProduct} onClose={() => setBookingProduct(null)} existingAppointments={appointments} />
+            {bookingProduct && <BookingModal product={bookingProduct} user={currentUser} isOpen={!!bookingProduct} onClose={() => setBookingProduct(null)} existingAppointments={appointments} />}
             <Footer />
         </div>
     );
