@@ -678,7 +678,7 @@ export default function LandingPage() {
                 <section className="mb-16">
                     <div className="bg-pink-500 rounded-2xl shadow-lg p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
                         <div className="md:w-1/2 text-center md:text-left">
-                            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight fade-in-up">Mãos de fada, unhas de rainha. ✨</h1>
+                            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight fade-in-up">Mãos de fada, unhas de rainha.</h1>
                             <p className="mt-4 text-lg text-pink-100 fade-in-up" style={{transitionDelay: '200ms'}}>Explore nossos serviços de manicure e pedicure e reserve um tempo para você. Suas mãos merecem esse carinho!</p>
                             <a href="#produtos" className="mt-8 inline-block bg-white text-pink-600 font-semibold px-8 py-3 rounded-full hover:bg-pink-100 transition-transform hover:scale-105 fade-in-up" style={{transitionDelay: '400ms'}}>Agendar Agora</a>
                         </div>
