@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { Gem, User, Menu, X, Sun, Moon, Search, List, Instagram, Facebook, Twitter, LogOut, ChevronLeft, ChevronRight, Heart, Calendar } from 'lucide-react';
+import { User, Menu, X, Search, List, Instagram, Facebook, Twitter, LogOut, ChevronLeft, ChevronRight, Heart, Calendar } from 'lucide-react';
 import { UrlProducts, UrlCategories, UrlUser, API_BASE_URL } from '../admin/utils/scripts/url/index';
 
 // --- TIPOS E INTERFACES ---
@@ -97,7 +97,7 @@ const ProductCard: React.FC<{ product: Product; user: CurrentUser | null; onBook
     }, []);
 
     return (
-        <div ref={cardRef} className="card-interactive bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col fade-in-up transition-transform duration-300 hover:-translate-y-1 relative">
+        <div ref={cardRef} className="card-interactive bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden flex flex-col fade-in-up transition-transform duration-300 hover:-translate-y-1 relative">
             <div className="w-full h-48 overflow-hidden relative">
                 <img src={`${API_BASE_URL}/${product.image}`} alt={product.title} className="w-full h-full object-cover transition-transform duration-300 hover:scale-105" />
                 {user && (
@@ -107,11 +107,11 @@ const ProductCard: React.FC<{ product: Product; user: CurrentUser | null; onBook
                 )}
             </div>
             <div className="p-6 flex flex-col flex-grow">
-                <h3 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">{product.title}</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4 flex-grow text-sm">{product.content.substring(0, 100)}...</p>
+                <h3 className="text-xl font-bold mb-2 text-pink-900">{product.title}</h3>
+                <p className="text-gray-600 mb-4 flex-grow text-sm">{product.content.substring(0, 100)}...</p>
                 <div className="flex justify-between items-center mt-auto">
-                    <span className="text-2xl font-bold text-blue-600">R${parseFloat(String(product.price)).toFixed(2)}</span>
-                    <button onClick={onBook} className="bg-blue-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-blue-700 transition-colors z-10">
+                    <span className="text-2xl font-bold text-pink-600">R${parseFloat(String(product.price)).toFixed(2)}</span>
+                    <button onClick={onBook} className="bg-pink-600 text-white font-semibold px-6 py-2 rounded-full hover:bg-pink-700 transition-colors z-10">
                         Agendar
                     </button>
                 </div>
@@ -205,7 +205,6 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
         return slots;
     }, [existingAppointments, selectedDate]);
     
-    // CORREÇÃO: A verificação agora acontece depois dos hooks
     if (!isOpen || !product) return null;
 
     const handleDateClick = (day: number) => {
@@ -219,7 +218,7 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedDate || !selectedTime) {
-            Swal.fire('Atenção', 'Selecione um dia e horário.', 'warning');
+            Swal.fire('Atenção', 'Por favor, selecione um dia e um horário.', 'warning');
             return;
         }
         setIsLoading(true);
@@ -235,10 +234,10 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                 body: JSON.stringify({ postId: product.id, appointmentDate: finalBookingDate.toISOString() }),
             });
 
-            if (res.status === 409) throw new Error("Este horário já não se encontra disponível.");
-            if (!res.ok) throw new Error("Não foi possível realizar o agendamento.");
+            if (res.status === 409) throw new Error("Ops! Este horário já foi agendado. Por favor, escolha outro.");
+            if (!res.ok) throw new Error("Não foi possível realizar o agendamento. Tente novamente.");
 
-            Swal.fire('Agendado!', 'O seu horário foi confirmado com sucesso.', 'success');
+            Swal.fire('Agendado!', 'Seu horário foi confirmado com sucesso. Mal podemos esperar para te ver!', 'success');
             onClose();
         } catch (error: any) {
             Swal.fire('Oops!', error.message, 'error');
@@ -256,7 +255,7 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="p-4 border-b shrink-0 flex justify-between items-center">
-                    <h3 className="text-xl font-semibold text-gray-800">Agendar: {product.title}</h3>
+                    <h3 className="text-xl font-semibold text-gray-800">Reserve seu momento: {product.title}</h3>
                     <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
                         <X size={20} className="text-gray-500" />
                     </button>
@@ -266,9 +265,9 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <div className="flex items-center justify-between mb-2">
-                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="p-2 rounded-full hover:bg-gray-100"><ChevronLeft size={20} /></button>
-                                <h4 className="font-semibold text-center">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h4>
-                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="p-2 rounded-full hover:bg-gray-100"><ChevronRight size={20} /></button>
+                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} className="p-2 rounded-full hover:bg-pink-100"><ChevronLeft size={20} /></button>
+                                <h4 className="font-semibold text-center text-pink-800">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h4>
+                                <button type="button" onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} className="p-2 rounded-full hover:bg-pink-100"><ChevronRight size={20} /></button>
                             </div>
                             <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500">
                                 {daysOfWeek.map(day => <div key={day} className="font-semibold">{day}</div>)}
@@ -288,8 +287,8 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                                             onClick={() => handleDateClick(dayNumber)}
                                             disabled={!isAvailable}
                                             className={`w-10 h-10 rounded-full text-sm transition-colors ${
-                                                isSelected ? 'bg-blue-600 text-white' :
-                                                isAvailable ? 'hover:bg-blue-100' : 'text-gray-400'
+                                                isSelected ? 'bg-pink-600 text-white' :
+                                                isAvailable ? 'hover:bg-pink-100' : 'text-gray-400'
                                             }`}
                                         >{dayNumber}</button>
                                     );
@@ -297,7 +296,7 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                             </div>
                         </div>
                         <div className="md:border-l md:border-gray-200 md:pl-6">
-                            <h4 className="font-semibold mb-2">Horários Disponíveis</h4>
+                            <h4 className="font-semibold mb-2 text-pink-800">Horários Disponíveis</h4>
                             {selectedDate ? (
                                 <div className="space-y-2">
                                     {timeSlots.length > 0 ? timeSlots.map(time => {
@@ -309,13 +308,13 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                                                 onClick={() => setSelectedTime(time)}
                                                 disabled={isBooked}
                                                 className={`w-full text-center p-2 rounded-lg border text-sm transition-colors ${
-                                                    selectedTime === time ? 'bg-blue-600 text-white border-blue-600' : 
+                                                    selectedTime === time ? 'bg-pink-600 text-white border-pink-600' : 
                                                     isBooked ? 'bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed' :
-                                                    'border-gray-300 hover:bg-gray-100'
+                                                    'border-gray-300 hover:bg-pink-100 hover:border-pink-200'
                                                 }`}
                                             >{isBooked ? 'Agendado' : time}</button>
                                         )
-                                    }) : <p className="text-sm text-gray-500">Nenhum horário disponível.</p>}
+                                    }) : <p className="text-sm text-gray-500">Nenhum horário disponível neste dia.</p>}
                                 </div>
                             ) : <p className="text-sm text-gray-500">Selecione um dia no calendário.</p>}
                         </div>
@@ -329,9 +328,9 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
                     <button 
                         type="submit" 
                         disabled={isLoading || !selectedTime} 
-                        className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:bg-blue-400 disabled:cursor-not-allowed"
+                        className="px-6 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold disabled:bg-pink-300 disabled:cursor-not-allowed"
                     >
-                        {isLoading ? 'A confirmar...' : 'Confirmar Agendamento'}
+                        {isLoading ? 'Confirmando...' : 'Confirmar Agendamento'}
                     </button>
                 </div>
             </form>
@@ -342,21 +341,21 @@ const BookingModal: React.FC<{ product: Product | null; user: CurrentUser | null
 const MobileDrawer: React.FC<{ isOpen: boolean; onClose: () => void; user: CurrentUser | null; onLogout: () => void; }> = ({ isOpen, onClose, user, onLogout }) => {
     return (
         <div className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'bg-black/40' : 'bg-transparent pointer-events-none'}`} onClick={onClose}>
-            <div className={`fixed top-0 right-0 h-full w-4/5 max-w-xs bg-white dark:bg-gray-800 shadow-xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`} onClick={e => e.stopPropagation()}>
+            <div className={`fixed top-0 right-0 h-full w-4/5 max-w-xs bg-white shadow-xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`} onClick={e => e.stopPropagation()}>
                 <div className="p-4 flex justify-end">
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-pink-100">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
                 <nav className="flex flex-col p-4 space-y-4">
-                    <a href="#" className="text-lg font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600">Início</a>
-                    <a href="#produtos" className="text-lg font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600">Serviços</a>
+                    <a href="#" className="text-lg font-medium text-gray-800 hover:text-pink-600">Início</a>
+                    <a href="#produtos" className="text-lg font-medium text-gray-800 hover:text-pink-600">Serviços</a>
                     {user ? (
                         <button onClick={onLogout} className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-500 text-white text-sm font-semibold hover:bg-red-600">
-                            <LogOut className="w-4 h-4" /><span>Logout</span>
+                            <LogOut className="w-4 h-4" /><span>Sair</span>
                         </button>
                     ) : (
-                        <a href={`${API_BASE_URL}/auth/google`} className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+                        <a href={`${API_BASE_URL}/auth/google`} className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-pink-600 text-white text-sm font-semibold hover:bg-pink-700">
                             <User className="w-4 h-4" /><span>Login com Google</span>
                         </a>
                     )}
@@ -384,20 +383,20 @@ const UserProfile: React.FC<{ user: CurrentUser; onLogout: () => void }> = ({ us
     return (
         <div className="relative" ref={ref}>
             <button onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2">
-                <img src={user.image || `https://ui-avatars.com/api/?name=${user.name || 'U'}&background=random`} alt="Avatar" className="w-9 h-9 rounded-full object-cover" />
-                <span className="hidden sm:inline font-semibold text-sm text-gray-700 dark:text-gray-300">{user.name}</span>
+                <img src={user.image || `https://ui-avatars.com/api/?name=${user.name || 'U'}&background=ec4899&color=fff`} alt="Avatar" className="w-9 h-9 rounded-full object-cover" />
+                <span className="hidden sm:inline font-semibold text-sm text-gray-700">{user.name}</span>
             </button>
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-lg z-50 border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <p className="font-semibold text-gray-800 dark:text-white truncate">{user.name}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg z-50 border border-pink-100 overflow-hidden">
+                    <div className="p-4 border-b border-pink-100">
+                        <p className="font-semibold text-gray-800 truncate">{user.name}</p>
+                        <p className="text-sm text-gray-500 truncate">{user.email}</p>
                     </div>
                     <div className="p-2">
-                        <button onClick={() => navigate('/meus-agendamentos')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg">
+                        <button onClick={() => navigate('/meus-agendamentos')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-pink-50 rounded-lg">
                             <Calendar size={16} /> Meus Agendamentos
                         </button>
-                        <button onClick={onLogout} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg">
+                        <button onClick={onLogout} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg">
                             <LogOut size={16} /> Sair
                         </button>
                     </div>
@@ -409,56 +408,49 @@ const UserProfile: React.FC<{ user: CurrentUser; onLogout: () => void }> = ({ us
 
 const Footer: React.FC = () => {
     return (
-        <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+        <footer className="bg-white border-t border-pink-100">
             <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
-                           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center"><Gem className="text-white w-5 h-5" /></div>
-                           <span className="font-bold text-xl">Sua Marca</span>
+                           <img src="png-logo.png" className='w-29 lg:w-56' alt="Logo" />
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Transformando o visual e elevando a autoestima desde 2024.</p>
+                        <p className="text-sm text-gray-500">Unhas perfeitas que elevam sua autoestima. 💅</p>
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-800 dark:text-white tracking-wider uppercase">Navegação</h3>
+                        <h3 className="text-sm font-semibold text-pink-900 tracking-wider uppercase">Navegação</h3>
                         <ul className="mt-4 space-y-2">
-                            <li><a href="#" className="text-base text-gray-500 dark:text-gray-400 hover:text-blue-600">Início</a></li>
-                            <li><a href="#produtos" className="text-base text-gray-500 dark:text-gray-400 hover:text-blue-600">Serviços</a></li>
+                            <li><a href="#" className="text-base text-gray-500 hover:text-pink-600">Início</a></li>
+                            <li><a href="#produtos" className="text-base text-gray-500 hover:text-pink-600">Serviços</a></li>
                         </ul>
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-gray-800 dark:text-white tracking-wider uppercase">Legal</h3>
+                        <h3 className="text-sm font-semibold text-pink-900 tracking-wider uppercase">Legal</h3>
                         <ul className="mt-4 space-y-2">
-                            <li><a href="#" className="text-base text-gray-500 dark:text-gray-400 hover:text-blue-600">Política de Privacidade</a></li>
-                            <li><a href="#" className="text-base text-gray-500 dark:text-gray-400 hover:text-blue-600">Termos de Uso</a></li>
+                            <li><a href="#" className="text-base text-gray-500 hover:text-pink-600">Política de Privacidade</a></li>
+                            <li><a href="#" className="text-base text-gray-500 hover:text-pink-600">Termos de Uso</a></li>
                         </ul>
                     </div>
                      <div>
-                        <h3 className="text-sm font-semibold text-gray-800 dark:text-white tracking-wider uppercase">Siga-nos</h3>
+                        <h3 className="text-sm font-semibold text-pink-900 tracking-wider uppercase">Siga-nos</h3>
                         <div className="flex mt-4 space-x-4">
-                            <a href="#" className="text-gray-400 hover:text-blue-600"><Instagram /></a>
-                            <a href="#" className="text-gray-400 hover:text-blue-600"><Facebook /></a>
-                            <a href="#" className="text-gray-400 hover:text-blue-600"><Twitter /></a>
+                            <a href="#" className="text-gray-400 hover:text-pink-600"><Instagram /></a>
+                            <a href="#" className="text-gray-400 hover:text-pink-600"><Facebook /></a>
+                            <a href="#" className="text-gray-400 hover:text-pink-600"><Twitter /></a>
                         </div>
                     </div>
                 </div>
-                <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                    <p>&copy; {new Date().getFullYear()} Sua Marca. Todos os direitos reservados.</p>
+                <div className="mt-8 border-t border-pink-100 pt-8 text-center text-sm text-gray-500">
+                    <p>&copy; {new Date().getFullYear()} Seu Salão de Manicure. Todos os direitos reservados.</p>
                 </div>
             </div>
         </footer>
     );
 };
 
-
 // --- COMPONENTE PRINCIPAL ---
 
 export default function LandingPage() {
-    const [theme, setTheme] = useState(() => {
-        const savedTheme = getCookie('theme');
-        if (savedTheme) return savedTheme;
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    });
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -469,15 +461,6 @@ export default function LandingPage() {
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-        setCookie('theme', theme, 365);
-    }, [theme]);
 
     useEffect(() => {
         const checkAuthStatus = async (isNewLogin: boolean = false) => {
@@ -574,8 +557,6 @@ export default function LandingPage() {
 
         return () => elements.forEach(el => observer.unobserve(el));
     }, [filteredProducts]);
-
-    const handleThemeToggle = () => setTheme(theme === 'light' ? 'dark' : 'light');
     
     const handleBookClick = (product: Product) => {
         if (currentUser) {
@@ -583,11 +564,12 @@ export default function LandingPage() {
         } else {
             Swal.fire({
                 title: 'Login Necessário',
-                text: "Você precisa de fazer login para agendar um serviço.",
+                text: "Você precisa fazer login para agendar um horário. É rapidinho!",
                 icon: 'info',
                 showCancelButton: true,
                 confirmButtonText: 'Fazer Login',
                 cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#db2777',
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.location.href = `${API_BASE_URL}/auth/google`;
@@ -598,7 +580,7 @@ export default function LandingPage() {
 
     const handleSaveToggle = async (productId: number) => {
         if (!currentUser) {
-            Swal.fire('Login Necessário', 'Você precisa de fazer login para salvar um item.', 'info');
+            Swal.fire('Login Necessário', 'Você precisa de fazer login para salvar um serviço.', 'info');
             return;
         }
     
@@ -643,7 +625,7 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+        <div className="bg-pink-50 text-gray-800 transition-colors duration-300">
             <style>{`
                 .fade-in-up { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
                 .fade-in-up.visible { opacity: 1; transform: translateY(0); }
@@ -654,7 +636,7 @@ export default function LandingPage() {
                     top: 0;
                     width: 100%;
                     height: 100%;
-                    background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(0, 123, 255, 0.15), transparent 20%);
+                    background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(236, 72, 153, 0.15), transparent 20%);
                     opacity: 0;
                     transition: opacity 0.3s;
                     border-radius: 1rem; /* same as card */
@@ -662,34 +644,27 @@ export default function LandingPage() {
                 .card-interactive:hover::before {
                     opacity: 1;
                 }
-                .dark .dark-mode-pattern {
-                    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
-                    background-size: 2rem 2rem;
-                }
             `}</style>
-            <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg sticky top-0 z-30 border-b border-gray-200 dark:border-gray-700">
+            <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-30 border-b border-pink-100 py-2">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center"><Gem className="text-white w-5 h-5" /></div>
-                            <span className="font-bold text-xl">Sua Marca</span>
+                            <img src="/png-logo.png" className='w-29' alt="Logo" />
                         </div>
                         <nav className="hidden md:flex items-center space-x-8">
-                            <a href="#" className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600">Início</a>
-                            <a href="#produtos" className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600">Serviços</a>
+                            <a href="#" className="text-sm font-medium text-gray-600 hover:text-pink-600">Início</a>
+                            <a href="#produtos" className="text-sm font-medium text-gray-600 hover:text-pink-600">Serviços</a>
                         </nav>
                         <div className="flex items-center gap-3">
-                            <button onClick={handleThemeToggle} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                {theme === 'light' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                            </button>
+                            
                             {currentUser ? (
                                 <UserProfile user={currentUser} onLogout={handleLogout} />
                             ) : (
-                                <a href={`${API_BASE_URL}/auth/google`} className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+                                <a href={`${API_BASE_URL}/auth/google`} className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-600 text-white text-sm font-semibold hover:bg-pink-700">
                                     <User className="w-4 h-4" /><span>Login com Google</span>
                                 </a>
                             )}
-                            <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 rounded-full text-gray-500 hover:bg-pink-100">
                                 <Menu className="w-6 h-6" />
                             </button>
                         </div>
@@ -701,29 +676,29 @@ export default function LandingPage() {
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <section className="mb-16">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
+                    <div className="bg-pink-500 rounded-2xl shadow-lg p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
                         <div className="md:w-1/2 text-center md:text-left">
-                            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 dark:text-white leading-tight fade-in-up">Agende seu Estilo, Transforme seu Visual</h1>
-                            <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 fade-in-up" style={{transitionDelay: '200ms'}}>Descubra nossos serviços exclusivos e agende seu horário com os melhores profissionais.</p>
-                            <a href="#produtos" className="mt-8 inline-block bg-blue-600 text-white font-semibold px-8 py-3 rounded-full hover:bg-blue-700 transition-transform hover:scale-105 fade-in-up" style={{transitionDelay: '400ms'}}>Ver Serviços</a>
+                            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight fade-in-up">Mãos de fada, unhas de rainha. ✨</h1>
+                            <p className="mt-4 text-lg text-pink-100 fade-in-up" style={{transitionDelay: '200ms'}}>Explore nossos serviços de manicure e pedicure e reserve um tempo para você. Suas mãos merecem esse carinho!</p>
+                            <a href="#produtos" className="mt-8 inline-block bg-white text-pink-600 font-semibold px-8 py-3 rounded-full hover:bg-pink-100 transition-transform hover:scale-105 fade-in-up" style={{transitionDelay: '400ms'}}>Agendar Agora</a>
                         </div>
                         <div className="md:w-1/2 fade-in-up" style={{transitionDelay: '600ms'}}>
-                            <img src="https://placehold.co/600x400/E2E8F0/4338CA?text=Destaque" alt="Imagem de Destaque" className="rounded-2xl w-full h-auto" />
+                            <img src="/services/destack-01.jpg" alt="Unhas de manicure bem feitas" className="rounded-2xl w-full h-auto shadow-md" />
                         </div>
                     </div>
                 </section>
 
                 <section id="produtos">
-                    <h2 className="text-3xl font-bold text-center mb-4">Nossos Serviços</h2>
-                    <p className="text-center text-gray-600 dark:text-gray-400 mb-12 max-w-2xl mx-auto">Explore nossa gama de serviços e encontre o ideal para você. Filtre por categoria para refinar sua busca.</p>
+                    <h2 className="text-3xl text-pink-700 font-bold text-center mb-4">Nossos Tratamentos Especiais</h2>
+                    <p className="text-center text-pink-600 mb-12 max-w-2xl mx-auto">Deixe suas unhas deslumbrantes com nossos tratamentos. Escolha a categoria ou procure pelo seu serviço preferido.</p>
                     <div className="mb-8 flex flex-col sm:flex-row gap-4">
                         <div className="relative flex-grow">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input type="text" placeholder="Buscar serviço..." onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                            <input type="text" placeholder="Buscar serviço..." onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-2.5 border border-pink-200 rounded-full bg-white focus:ring-2 focus:ring-pink-500 focus:outline-none" />
                         </div>
                         <div className="relative">
                             <List className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <select onChange={(e) => setSelectedCategory(e.target.value)} className="w-full sm:w-56 pl-12 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-800 appearance-none focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <select onChange={(e) => setSelectedCategory(e.target.value)} className="w-full sm:w-56 pl-12 pr-4 py-2.5 border border-pink-200 rounded-full bg-white appearance-none focus:ring-2 focus:ring-pink-500 focus:outline-none">
                                 <option value="all">Todas as Categorias</option>
                                 {categories.map(cat => <option key={cat.id} value={String(cat.id)}>{cat.name}</option>)}
                             </select>
