@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // --- TIPOS E CONFIGURAÇÕES ---
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:1000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 type AppointmentStatus = 'CONFIRMED' | 'COMPLETED' | 'CANCELED';
 type ActiveTab = 'dashboard' | 'favorites' | 'appointments';
