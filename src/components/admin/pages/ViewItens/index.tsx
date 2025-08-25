@@ -453,10 +453,7 @@ function EditModal({ isOpen, onClose, onSave, isSaving, item, categories }: Edit
                             </div>
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
                                 <h3 className="font-medium text-gray-900">Organização</h3>
-                                <select name="categoryId" value={localItem.categoryId ?? ''} onChange={handleFieldChange} className="block w-full p-2.5 text-sm text-gray-900 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Sem Categoria</option>
-                                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                                </select>
+                               
                                 <div className="flex items-center justify-between pt-4 border-t">
                                     <label className="text-sm font-medium text-gray-900">Visibilidade</label>
                                     <input type="checkbox" name="published" checked={!!localItem.published} onChange={handleFieldChange} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
