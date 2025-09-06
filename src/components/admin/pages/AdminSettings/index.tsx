@@ -22,7 +22,7 @@ function AdminSettings() {
 
             <header className="lg:w-[700px] lg:px-9 lg:mx-auto pb-6 pt-6 px-6 bg-gray-100">
                 <h1 className="text-2xl font-semibold text-gray-800">Configurações Admin</h1>
-                <p className="text-sm text-gray-500 mt-1">Atualize as infoprmações de acesso super usuário.</p>
+                <p className="text-sm text-gray-500 mt-1">Atualize as informações de acesso Super Usuário.</p>
             </header>
 
             <form className="lg:w-[700px] lg:mx-auto min-h-screen bg-gray-100" action="">
