@@ -159,7 +159,7 @@ export default function Dashboard() {
                                     <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                                         <CalendarCheck2 size={20} /> Próximos Agendamentos
                                     </h2>
-                                    <button onClick={() => navigate('/admin/dashboard/agendamentos')} className="text-sm font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                                    <button onClick={() => navigate('/admin/dashboard/agendamentos')} className="text-sm font-semibold text-pink-600 hover:underline flex items-center gap-1">
                                         Ver todos <ArrowRight size={14} />
                                     </button>
                                 </header>
