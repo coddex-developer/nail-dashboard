@@ -191,7 +191,7 @@ export default function Navbar() {
                 <div className="flex justify-between items-center h-16">
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2 cursor-pointer" onClick={() => go("/admin/dashboard")}>
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg bg-pink-600 text-white flex items-center justify-center">
                                 <Store size={18} />
                             </div>
                             <span className="font-bold text-lg text-gray-800 hidden sm:block">Meu Painel</span>

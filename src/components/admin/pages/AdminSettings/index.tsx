@@ -1,7 +1,8 @@
-import { CheckCircle, Lock, Phone, UserCircle } from "lucide-react";
+import { Lock, Phone, UserCircle } from "lucide-react";
 import Navbar from "../../utils/Navbar";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
+import { AdminPanelSettings } from "@mui/icons-material";
 
 function AdminSettings() {
 
@@ -52,7 +53,7 @@ function AdminSettings() {
 
                     <div className="lg:flex items-center justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
                         <button type="submit" className="cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-transparent bg-pink-600 text-sm font-semibold text-white shadow-sm hover:bg-pink-700">
-                            <CheckCircle></CheckCircle> Atualizar Informações
+                            <AdminPanelSettings></AdminPanelSettings> Atualizar Informações
                         </button>
                     </div>
                 </div>
