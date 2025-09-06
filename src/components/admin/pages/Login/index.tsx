@@ -62,7 +62,7 @@ export default function Login() {
             <main className="w-full max-w-md mx-auto p-6">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
                     <div className="flex flex-col items-center mb-8">
-                        <div className="h-[100px] dark:bg-amber-100 rounded-xl flex items-center justify-center mb-4">
+                        <div className="h-[90px] dark:bg-[#e5e5e5] rounded-xl flex items-center justify-center mb-4">
                             <img src="/png-logo.png" className="w-[250px] block" alt="Logo" />
                         </div>
                         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Acesso ao Painel</h1>
