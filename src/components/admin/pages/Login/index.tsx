@@ -62,8 +62,8 @@ export default function Login() {
             <main className="w-full max-w-md mx-auto p-6">
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
                     <div className="flex flex-col items-center mb-8">
-                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
-                            <Gem className="text-white w-7 h-7" />
+                        <div className="h-[100px] dark:bg-amber-100 rounded-xl flex items-center justify-center mb-4">
+                            <img src="/png-logo.png" className="w-[250px] block" alt="Logo" />
                         </div>
                         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Acesso ao Painel</h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Insira as suas credenciais para continuar</p>

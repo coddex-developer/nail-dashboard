@@ -54,10 +54,10 @@ export default function CreateProduct() {
                 navigate('/admin');
                 return;
             }
-            
+
             try {
-                const res = await fetch(UrlCategories.allCategories, { 
-                    headers: { 'Authorization': `Bearer ${token}` } 
+                const res = await fetch(UrlCategories.allCategories, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("Erro ao buscar categorias");
                 const data = await res.json();
@@ -116,17 +116,17 @@ export default function CreateProduct() {
         try {
             const res = await fetch(UrlCategories.createCategory, {
                 method: "POST",
-                headers: { 
+                headers: {
                     "Content-Type": "application/json",
-                    'Authorization': `Bearer ${token}` 
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ name: name.trim() }),
             });
             const newCategory = await res.json();
             if (!res.ok) throw new Error(newCategory.message || `Erro ${res.status}`);
-            
+
             Swal.fire({ icon: "success", title: "Criada!", text: "A nova categoria foi adicionada." });
-            
+
             setCategories(prev => [...prev, newCategory]);
             setSelectedCategory(String(newCategory.id));
         } catch (err: any) {
@@ -150,7 +150,7 @@ export default function CreateProduct() {
             Swal.fire("Atenção", "Título, preço, categoria e imagem são obrigatórios.", "warning");
             return;
         }
-        
+
         const token = localStorage.getItem('admin_token');
         if (!token) {
             Swal.fire("Erro", "Sessão expirada. Por favor, faça login novamente.", "error");
@@ -182,12 +182,12 @@ export default function CreateProduct() {
             }
             const responseData = await res.json();
             if (!res.ok) throw new Error(responseData.message || "Erro ao criar produto");
-            
+
             Swal.fire("Sucesso!", "Produto criado com sucesso.", "success");
             clearForm();
         } catch (err: any) {
             Swal.fire("Erro", err.message, "error");
-            if(err.message.includes("Sessão inválida")) {
+            if (err.message.includes("Sessão inválida")) {
                 navigate('/admin');
             }
         } finally {
@@ -204,7 +204,7 @@ export default function CreateProduct() {
                         <h1 className="text-2xl font-semibold text-gray-800">Criar novo produto</h1>
                         <p className="text-sm text-gray-500 mt-1">Adicione os detalhes do produto, imagem e horários.</p>
                     </header>
-                    
+
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200">
                             <div className="p-6 border-b border-gray-200">
@@ -258,7 +258,7 @@ export default function CreateProduct() {
                                 <div className="p-6 border-b border-gray-200"><h2 className="text-lg font-medium text-gray-900">Organização</h2></div>
                                 <div className="p-6 space-y-6">
                                     <div>
-                                        <label htmlFor="category" className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2"><LayoutGrid size={16}/> Categoria</label>
+                                        <label htmlFor="category" className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2"><LayoutGrid size={16} /> Categoria</label>
                                         <div className="flex items-center gap-2">
                                             <select id="category" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="block w-full p-2.5 text-sm text-gray-900 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500" required>
                                                 <option value="" disabled>Selecione...</option>
@@ -271,16 +271,16 @@ export default function CreateProduct() {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
-                                <div className="p-6 border-b border-gray-200"><h2 className="text-lg font-medium text-gray-900 flex items-center gap-2"><Clock size={18}/> Disponibilidade</h2></div>
+                                <div className="p-6 border-b border-gray-200"><h2 className="text-lg font-medium text-gray-900 flex items-center gap-2"><Clock size={18} /> Disponibilidade</h2></div>
                                 <div className="p-6">
                                     <AvailabilityManager availability={availability} setAvailability={setAvailability} />
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="hidden lg:flex items-center justify-end gap-3 pt-8 mt-8 border-t border-gray-200">
                         <button type="button" onClick={clearForm} className="px-5 py-2.5 rounded-full border bg-white text-sm font-semibold text-gray-800 hover:bg-gray-100">Limpar</button>
                         <button type="submit" disabled={isLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-transparent bg-pink-600 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 disabled:bg-blue-400">
