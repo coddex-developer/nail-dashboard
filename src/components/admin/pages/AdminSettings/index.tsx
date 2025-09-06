@@ -25,7 +25,7 @@ function AdminSettings() {
                 <p className="text-sm text-gray-500 mt-1">Atualize as informações de acesso Super Usuário.</p>
             </header>
 
-            <form className="lg:w-[700px] lg:mx-auto min-h-screen bg-gray-100" action="">
+            <form className="lg:w-[700px] lg:mx-auto bg-gray-100" action="">
                 <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8">
                     <div className="relative mt-3">
                         <UserCircle className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20} />

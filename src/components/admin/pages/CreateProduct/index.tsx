@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, FormEvent } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Swal from "sweetalert2";
-import { UploadCloud, PlusCircle, Check, X, Text, CircleDollarSign, LayoutGrid, Eye, Clock, Trash2 } from "lucide-react";
+import { UploadCloud, PlusCircle, Check, X, Text, CircleDollarSign, LayoutGrid, Eye, Clock, PenLine } from "lucide-react";
 import { UrlProducts, UrlCategories } from "../../utils/scripts/url/index";
 import Navbar from "../../utils/Navbar";
 import { useNavigate } from "react-router-dom";
@@ -213,7 +213,8 @@ export default function CreateProduct() {
                             <div className="p-6 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="relative">
-                                        <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="block px-3.5 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" placeholder=" " required />
+                                        <PenLine className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20} />
+                                        <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="block pl-10 pr-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" placeholder=" " required />
                                         <label htmlFor="title" className="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">Nome do Produto</label>
                                     </div>
                                     <div className="relative">
@@ -234,7 +235,7 @@ export default function CreateProduct() {
                                     <div className="ml-auto">
                                         <label htmlFor="published-toggle" className="inline-flex relative items-center cursor-pointer">
                                             <input type="checkbox" id="published-toggle" className="sr-only peer" checked={published} onChange={(e) => setPublished(e.target.checked)} />
-                                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-pink-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
                                         </label>
                                     </div>
                                 </div>
@@ -247,7 +248,7 @@ export default function CreateProduct() {
                                 <div className="p-6">
                                     <div onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop} className={`relative border-2 border-dashed ${dragOver ? "border-blue-500 bg-blue-50" : "border-gray-300"} rounded-xl p-6 flex flex-col items-center justify-center text-center h-56 transition`}>
                                         {preview ? (<> <img src={preview} alt="Preview" className="w-full h-full object-contain rounded-md" /> <button type="button" onClick={() => handleFileSelect(null)} className="absolute top-2 right-2 p-1.5 bg-white/80 rounded-full text-gray-700 hover:bg-white shadow-md"><X size={18} /></button> </>
-                                        ) : (<div className="text-center"> <UploadCloud size={40} className="text-gray-400 mx-auto mb-3" /> <label htmlFor="file-upload" className="font-semibold text-blue-600 hover:underline cursor-pointer">Adicionar imagem</label> <p className="text-xs text-gray-500 mt-1">ou arraste e solte</p> </div>)}
+                                        ) : (<div className="text-center"> <UploadCloud size={40} className="text-gray-400 mx-auto mb-3" /> <label htmlFor="file-upload" className="font-semibold text-pink-600 hover:underline cursor-pointer">Adicionar imagem</label> <p className="text-xs text-gray-500 mt-1">ou arraste e solte</p> </div>)}
                                         <input id="file-upload" ref={fileRef} type="file" accept="image/*" onChange={(e) => handleFileSelect(e.target.files?.[0] ?? null)} className="hidden" />
                                     </div>
                                 </div>
@@ -282,7 +283,7 @@ export default function CreateProduct() {
                     
                     <div className="hidden lg:flex items-center justify-end gap-3 pt-8 mt-8 border-t border-gray-200">
                         <button type="button" onClick={clearForm} className="px-5 py-2.5 rounded-full border bg-white text-sm font-semibold text-gray-800 hover:bg-gray-100">Limpar</button>
-                        <button type="submit" disabled={isLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-transparent bg-blue-600 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-blue-400">
+                        <button type="submit" disabled={isLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-transparent bg-pink-600 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 disabled:bg-blue-400">
                             {isLoading ? "A publicar..." : <><Check size={18} /> Publicar produto</>}
                         </button>
                     </div>
@@ -291,7 +292,7 @@ export default function CreateProduct() {
                 <footer className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-gray-200">
                     <div className="max-w-6xl mx-auto p-4 flex items-center justify-end gap-3">
                         <button type="button" onClick={clearForm} className="px-5 py-2.5 rounded-full border bg-white text-sm font-semibold text-gray-800 hover:bg-gray-100">Limpar</button>
-                        <button type="submit" disabled={isLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-transparent bg-blue-600 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-blue-400">
+                        <button type="submit" disabled={isLoading} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-transparent bg-pink-600 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 disabled:bg-blue-400">
                             {isLoading ? "A publicar..." : <><Check size={18} /> Publicar</>}
                         </button>
                     </div>
