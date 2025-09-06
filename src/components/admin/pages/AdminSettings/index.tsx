@@ -31,6 +31,7 @@ function AdminSettings() {
                         <input id="userAdmin" type="text" step="0.01" className="block pl-10 pr-3 pb-2.5 pt-4 w-full text-sm text-grgray-100 rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" placeholder=" " required />
                         <label htmlFor="userAdmin" className="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-gray-100 px-2 peer-focus:px-2 peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">Usuário</label>
                     </div>
+
                     <div className="relative mt-3">
                         <Lock className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20} />
                         <input id="passwordAdmin" type="password" step="0.01" className="block pl-10 pr-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-gray-100 rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" placeholder=" " required />
@@ -40,7 +41,7 @@ function AdminSettings() {
                     <div className="relative mt-3">
                         <Lock className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" size={20} />
                         <input id="confirmPasswordAdmin" type="password" step="0.01" className="block pl-10 pr-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-gray-100 rounded-lg border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" placeholder=" " required />
-                        <label htmlFor="confirmPasswordAdmin" className="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]gray-100 px-2 peer-focus:px-2 peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">Confirmar Senha</label>
+                        <label htmlFor="confirmPasswordAdmin" className="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-gray-100 px-2 peer-focus:px-2 peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">Confirmar Senha</label>
                     </div>
 
                     <div className="relative mt-3">
