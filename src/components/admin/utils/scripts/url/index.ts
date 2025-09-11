@@ -2,7 +2,7 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
 
 // URL base para o painel de administração
-const ADMIN_BASE_URL = `${API_BASE_URL}/admin`;
+export const ADMIN_BASE_URL = `${API_BASE_URL}/admin`;
 // URL base para as rotas do cliente
 export const USER_BASE_URL = `${API_BASE_URL}/user`;
 

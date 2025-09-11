@@ -141,7 +141,7 @@ export default function Dashboard() {
                         <p className="text-md text-gray-500">Visão geral do seu negócio.</p>
                     </header>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-star">
                         <div className="lg:col-span-2 space-y-8">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <StatCard icon={Package} title="Total de Produtos" value={stats.totalProducts} link="/admin/dashboard/produtos" />
